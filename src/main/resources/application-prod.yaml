@@ -1,0 +1,41 @@
+
+spring:
+  datasource:
+    url: jdbc:h2:file:./data/rbacdb;AUTO_SERVER=TRUE;INIT=CREATE SCHEMA IF NOT EXISTS gestion_utilisateurs
+    driver-class-name: org.h2.Driver
+    username: ${DB_USERNAME:sa}
+    password: ${DB_PASSWORD:}
+  h2:
+    console:
+      enabled: false
+  jpa:
+    hibernate:
+      # ATTENTION : update convient pour ce projet de démonstration, mais
+      # n'est pas un mécanisme de migration fiable en production réelle.
+      # Passer à Flyway/Liquibase avant un déploiement ministériel effectif
+      # (voir docs/migration_visibilite.sql comme point de départ).
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+        dialect: org.hibernate.dialect.H2Dialect
+  cache:
+    cache-names: visibilityScope
+
+server:
+  port: ${SERVER_PORT:8080}
+  error:
+    include-message: never
+    include-binding-errors: never
+    include-stacktrace: never
+
+app:
+  jwt:
+    # OBLIGATOIRE en production : ne jamais garder la valeur par défaut du profil dev.
+    secret: ${JWT_SECRET}
+    expiration: ${JWT_EXPIRATION:86400000}
+
+# Mot de passe du compte de secours (compte_systeme = true), voir DataInitializer.
+# OBLIGATOIRE en production — la valeur par défaut ne doit servir qu'en dev.
+# SUPERADMIN_PASSWORD=<valeur forte, gérée par le secret manager>

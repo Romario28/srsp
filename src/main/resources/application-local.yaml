@@ -1,0 +1,4 @@
+app:
+  jwt:
+    # Local development key. Override with JWT_SECRET if needed.
+    secret: ${JWT_SECRET:4D6251655468576D5A7134743777217A25432A462D4A614E645267556B586E32}

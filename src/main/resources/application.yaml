@@ -1,0 +1,52 @@
+#spring:
+#  datasource:
+#    url: jdbc:h2:mem:rbacdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;INIT=CREATE SCHEMA IF NOT EXISTS gestion_utilisateurs
+spring:
+  datasource:
+    url: jdbc:h2:mem:rbacdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;INIT=CREATE SCHEMA IF NOT EXISTS anticipation\;CREATE SCHEMA IF NOT EXISTS referentiel_rh\;CREATE SCHEMA IF NOT EXISTS gestion_utilisateurs
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+      settings:
+        web-allow-others: true
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.H2Dialect
+  cache:
+    cache-names: visibilityScope
+  servlet:
+    multipart:
+      max-file-size: 50MB   # ou 20MB si votre fichier est plus petit
+      max-request-size: 50MB
+
+server:
+  port: 8080
+  error:
+    include-message: always
+    include-binding-errors: always
+
+
+app:
+  jwt:
+    # Clé Base64 de 256 bits minimum pour HS256
+    secret: "4D6251655468576D5A7134743777217A25432A462D4A614E645267556B586E32"
+    expiration: 86400000   # 24 h en millisecondes
+
+logging:
+  level:
+    com.entreprise.gestion: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    org.springframework.web: DEBUG
+    org.springframework.data.jpa: DEBUG
+
