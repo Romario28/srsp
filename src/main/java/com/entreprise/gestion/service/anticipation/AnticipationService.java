@@ -78,6 +78,7 @@ public class AnticipationService {
         return new AlerteAnticipation(
                 a.getMatricule(), a.getPrenoms() + " " + a.getNom(), e.type(), e.dateEcheance(),
                 jours, details, a.getDateNaissance(), a.getAvanceDate(), a.getDateDebutContrat(),
+                a.getDateFinContrat(),
                 a.getCorps() != null ? a.getCorps().getCode() : null,
                 a.getGrade() != null ? a.getGrade().getCode() : null,
                 a.getCorps() != null ? a.getCorps().getCategorie() : null
@@ -113,7 +114,6 @@ public class AnticipationService {
     private final AgentRepository agentRepository;
     private final MoteurAnticipation moteur;
 
-    *//** horizonJours ~ 548 = 18 mois. Inclut aussi les retards (jours négatifs). *//*
     @Transactional(readOnly = true)
     public List<AlerteAnticipation> departsRetraite(int horizonJours) {
         return calculerParType(TypeAnticipation.DEPART_RETRAITE, horizonJours);
@@ -134,7 +134,6 @@ public class AnticipationService {
         return calculerParType(TypeAnticipation.FIN_CONTRAT, horizonJours);
     }
 
-    *//** Séparé des autres : pas de notion d'horizon, une anomalie doit toujours remonter. *//*
     @Transactional(readOnly = true)
     public List<AlerteAnticipation> anomalies() {
         return agentRepository.findAllActifs(CodesSituationAdministrative.SORTIE_DEFINITIVE).stream()

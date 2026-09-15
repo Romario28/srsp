@@ -13,6 +13,7 @@ public record AlerteAnticipation(
         LocalDate dateNaissance,      // vérification DEPART_RETRAITE
         LocalDate avanceDate,         // vérification AVANCEMENT (standard/ELD)
         LocalDate dateDebutContrat,   // vérification TITULARISATION (stagiaire)
+        LocalDate dateFinContrat,     // vérification FIN_CONTRAT
         String corpsCode,
         String gradeCode,
         String categorieCode
