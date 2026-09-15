@@ -19,14 +19,34 @@ public class AnticipationController {
     @GetMapping("/retraite")
     @PreAuthorize("hasAnyRole('ADMIN','EMPLOYE')")
     public ResponseEntity<List<AlerteAnticipation>> retraite(
-            @RequestParam(defaultValue = "60") int seuilAnnees) {
-        return ResponseEntity.ok(anticipationService.departsRetraite(seuilAnnees));
+            @RequestParam(required = false) Integer horizonJours) {
+        return ResponseEntity.ok(anticipationService.departsRetraite(horizonJours));
     }
 
     @GetMapping("/avancement")
     @PreAuthorize("hasAnyRole('ADMIN','EMPLOYE')")
     public ResponseEntity<List<AlerteAnticipation>> avancement(
-            @RequestParam(defaultValue = "90") int horizonJours) {
+            @RequestParam(required = false) Integer horizonJours) {
         return ResponseEntity.ok(anticipationService.avancementsDus(horizonJours));
+    }
+
+    @GetMapping("/titularisation")
+    @PreAuthorize("hasAnyRole('ADMIN','EMPLOYE')")
+    public ResponseEntity<List<AlerteAnticipation>> titularisation(
+            @RequestParam(required = false) Integer horizonJours) {
+        return ResponseEntity.ok(anticipationService.titularisationsDues(horizonJours));
+    }
+
+    @GetMapping("/fin-contrat")
+    @PreAuthorize("hasAnyRole('ADMIN','EMPLOYE')")
+    public ResponseEntity<List<AlerteAnticipation>> finContrat(
+            @RequestParam(required = false) Integer horizonJours) {
+        return ResponseEntity.ok(anticipationService.finsContrat(horizonJours));
+    }
+
+    @GetMapping("/anomalies")
+    @PreAuthorize("hasAnyRole('ADMIN','EMPLOYE')")
+    public ResponseEntity<List<AlerteAnticipation>> anomalies() {
+        return ResponseEntity.ok(anticipationService.anomalies());
     }
 }

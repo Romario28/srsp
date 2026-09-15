@@ -1,8 +1,6 @@
-// AlerteAnticipation.java
 package com.entreprise.gestion.service.anticipation;
 
 import com.entreprise.gestion.entite.anticipation.TypeAnticipation;
-
 import java.time.LocalDate;
 
 public record AlerteAnticipation(
@@ -11,5 +9,11 @@ public record AlerteAnticipation(
         TypeAnticipation type,
         LocalDate dateEcheance,
         long joursRestants,
-        String details
+        String details,
+        LocalDate dateNaissance,      // vérification DEPART_RETRAITE
+        LocalDate avanceDate,         // vérification AVANCEMENT (standard/ELD)
+        LocalDate dateDebutContrat,   // vérification TITULARISATION (stagiaire)
+        String corpsCode,
+        String gradeCode,
+        String categorieCode
 ) {}

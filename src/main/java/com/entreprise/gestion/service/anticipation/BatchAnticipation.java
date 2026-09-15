@@ -28,25 +28,24 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class BatchAnticipation {
 
+
     private static final int TAILLE_LOT = 500;
 
     private final AgentRepository agentRepository;
     private final MoteurAnticipation moteur;
     private final AlerteRepository alerteRepository;
-    private final ConfigurationDelaiRepository configurationDelaiRepository;
+    private final ConfigurationDelaiService configurationDelaiService; // ← remplace ConfigurationDelaiRepository
     private final EntityManager entityManager;
 
     @Scheduled(cron = "${anticipation.batch.cron:0 0 3 * * *}")
     @Transactional
     public void executer() {
         LocalDate aujourdhui = LocalDate.now();
-        Map<TypeAnticipation, Integer> delais = configurationDelaiRepository.findByActifTrue().stream()
-                .collect(Collectors.toMap(ConfigurationDelai::getType, ConfigurationDelai::getDelaiPrevenanceJours));
 
         int compteur = 0;
         for (Agent agent : agentRepository.findAllActifs(CodesSituationAdministrative.SORTIE_DEFINITIVE)) {
             for (Echeance e : moteur.calculerEcheances(agent)) {
-                traiter(e, delais, aujourdhui);
+                traiter(e, aujourdhui);
             }
             if (++compteur % TAILLE_LOT == 0) {
                 entityManager.flush();
@@ -55,19 +54,18 @@ public class BatchAnticipation {
         }
     }
 
-    private void traiter(Echeance e, Map<TypeAnticipation, Integer> delais, LocalDate aujourdhui) {
+    private void traiter(Echeance e, LocalDate aujourdhui) {
         if (e.type() == TypeAnticipation.ANOMALIE) {
-            upsert(e, null);   // les anomalies sont toujours remontées, pas de filtre de délai
+            upsert(e, null);
             return;
         }
 
-        int delai = delais.getOrDefault(e.type(), 30);
+        int delai = configurationDelaiService.resoudreDelai(e.type());
         long joursRestants = ChronoUnit.DAYS.between(aujourdhui, e.dateEcheance());
-        if (joursRestants > delai) return;   // hors fenêtre de prévenance : pas encore d'alerte
+        if (joursRestants > delai) return;
 
         upsert(e, e.dateEcheance());
     }
-
     /**
      * Une alerte déjà acquittée pour cette échéance exacte n'est jamais
      * recréée. Si la date d'échéance calculée diffère de celle acquittée
