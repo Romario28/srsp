@@ -1,4 +1,3 @@
-// service/anticipation/MoteurAnticipation.java
 package com.entreprise.gestion.service.anticipation;
 
 import com.entreprise.gestion.entite.anticipation.TypeAnticipation;
@@ -11,11 +10,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Calcule, pour UN agent, l'ensemble de ses échéances futures — c'est le
- * "livrable service métier de calcul" du cahier des charges. Ne modifie
- * jamais rien sur Agent : lecture seule, calcul pur.
- */
+
 @Service
 @RequiredArgsConstructor
 public class MoteurAnticipation {
@@ -27,7 +22,7 @@ public class MoteurAnticipation {
 
     public List<Echeance> calculerEcheances(Agent a) {
         List<Echeance> resultats = new ArrayList<>();
-        if (!estEnActivite(a)) return resultats;   // sortie définitive : rien à anticiper
+        if (!estEnActivite(a)) return resultats;
 
         ajouter(resultats, calculerRetraite(a));
         ajouter(resultats, calculerAvancementOuAnomalie(a));
@@ -40,15 +35,13 @@ public class MoteurAnticipation {
                 || !CodesSituationAdministrative.SORTIE_DEFINITIVE.contains(a.getSanction().getCode());
     }
 
-    // ── Retraite ──────────────────────────────────────────────────────────
     private Echeance calculerRetraite(Agent a) {
-        if (a.getStatut() != StatutAgent.FONCTIONNAIRE) return null;   // règle propre aux fonctionnaires
         if (a.getDateNaissance() == null) return anomalie(a, "Date de naissance manquante");
         LocalDate echeance = a.getDateNaissance().plusYears(ageRetraite);
         return new Echeance(a.getMatricule(), nomComplet(a), TypeAnticipation.DEPART_RETRAITE, echeance, null);
     }
 
-    // ── Avancement : dispatch selon le régime de l'agent ────────────────────
+
     private Echeance calculerAvancementOuAnomalie(Agent a) {
         if (a.getGrade() == null)  return anomalie(a, "Grade manquant");
         if (a.getCorps() == null)  return anomalie(a, "Corps manquant");
@@ -61,7 +54,6 @@ public class MoteurAnticipation {
         return calculerAvancementStandard(a);
     }
 
-    // Régime ELD — règle fixe, aucune lecture de INDICE_GRADE_CORPS.duree_requise
     private Echeance calculerPalierEld(Agent a) {
         if (a.getAvanceDate() == null) return anomalie(a, "Date du dernier palier manquante (ELD)");
         LocalDate echeance = a.getAvanceDate().plusYears(2);
@@ -69,30 +61,33 @@ public class MoteurAnticipation {
                 echeance, "Palier suivant (ELD, +2 ans fixe)");
     }
 
-    // Régime stagiaire — ancré sur date_debut_contrat, pas avance_date
     private Echeance calculerTitularisation(Agent a) {
-        if (a.getDateDebutContrat() == null) return anomalie(a, "Date de début de contrat manquante (stagiaire)");
+        LocalDate dateAncrage = a.getAvanceDate() != null ? a.getAvanceDate() : a.getDateDebutContrat();
+        if (dateAncrage == null) {
+            return anomalie(a, "Ni date d'avancement ni date de début de contrat renseignée (stagiaire)");
+        }
         Integer duree = dureeRequise(a);
-        if (duree == null) return anomalie(a, "Durée de stage non renseignée pour "
-                + a.getCorps().getCode() + "/" + a.getGrade().getCode());
-        LocalDate echeance = a.getDateDebutContrat().plusMonths(duree);
+        if (duree == null) {
+            return anomalie(a, "Durée de stage non renseignée pour "
+                    + a.getCorps().getCode() + "/" + a.getGrade().getCode());
+        }
+        LocalDate echeance = dateAncrage.plusYears(duree);
         return new Echeance(a.getMatricule(), nomComplet(a), TypeAnticipation.TITULARISATION, echeance, null);
     }
 
-    // Régime standard — corps/grade normal
+
     private Echeance calculerAvancementStandard(Agent a) {
         if (a.getAvanceDate() == null) return anomalie(a, "Date du dernier avancement manquante");
         Integer duree = dureeRequise(a);
         if (duree == null) return anomalie(a, "Durée requise non renseignée pour "
                 + a.getCorps().getCode() + "/" + a.getGrade().getCode());
-        LocalDate echeance = a.getAvanceDate().plusMonths(duree);
+        LocalDate echeance = a.getAvanceDate().plusYears(duree);
         return new Echeance(a.getMatricule(), nomComplet(a), TypeAnticipation.AVANCEMENT, echeance, null);
     }
 
-    // ── Fin de contrat ────────────────────────────────────────────────────
+
     private Echeance calculerFinContrat(Agent a) {
-        // Absence de date_fin_contrat = normal pour un fonctionnaire (CDI de fait) —
-        // ce n'est PAS une anomalie, contrairement à une avance_date manquante.
+        // Absence de date_fin_contrat = normal pour contrat indeterminé
         if (a.getDateFinContrat() == null) return null;
         return new Echeance(a.getMatricule(), nomComplet(a), TypeAnticipation.FIN_CONTRAT,
                 a.getDateFinContrat(), null);
