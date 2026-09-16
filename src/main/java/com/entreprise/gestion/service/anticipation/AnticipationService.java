@@ -43,7 +43,7 @@ public class AnticipationService {
 
     @Transactional(readOnly = true)
     public List<AlerteAnticipation> anomalies() {
-        return agentRepository.findAllActifs(CodesSituationAdministrative.SORTIE_DEFINITIVE).stream()
+        return agentRepository.findAllActifs().stream()
                 .flatMap(a -> moteur.calculerEcheances(a).stream()
                         .filter(e -> e.type() == TypeAnticipation.ANOMALIE)
                         .map(e -> versAlerte(a, e)))
@@ -56,7 +56,7 @@ public class AnticipationService {
                 ? horizonJoursDemande
                 : configurationDelaiService.resoudreDelai(type);
 
-        return agentRepository.findAllActifs(CodesSituationAdministrative.SORTIE_DEFINITIVE).stream()
+        return agentRepository.findAllActifs().stream()
                 .flatMap(a -> moteur.calculerEcheances(a).stream()
                         .filter(e -> e.type() == type)
                         .map(e -> versAlerte(a, e)))
@@ -136,7 +136,7 @@ public class AnticipationService {
 
     @Transactional(readOnly = true)
     public List<AlerteAnticipation> anomalies() {
-        return agentRepository.findAllActifs(CodesSituationAdministrative.SORTIE_DEFINITIVE).stream()
+        return agentRepository.findAllActifs().stream()
                 .flatMap(a -> moteur.calculerEcheances(a).stream()
                         .filter(e -> e.type() == TypeAnticipation.ANOMALIE)
                         .map(e -> versAlerte(a, e)))
@@ -144,7 +144,7 @@ public class AnticipationService {
     }
 
     private List<AlerteAnticipation> calculerParType(TypeAnticipation type, int horizonJours) {
-        return agentRepository.findAllActifs(CodesSituationAdministrative.SORTIE_DEFINITIVE).stream()
+        return agentRepository.findAllActifs().stream()
                 .flatMap(a -> moteur.calculerEcheances(a).stream()
                         .filter(e -> e.type() == type)
                         .map(e -> versAlerte(a, e)))

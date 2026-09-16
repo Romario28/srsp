@@ -43,7 +43,7 @@ public class BatchAnticipation {
         LocalDate aujourdhui = LocalDate.now();
 
         int compteur = 0;
-        for (Agent agent : agentRepository.findAllActifs(CodesSituationAdministrative.SORTIE_DEFINITIVE)) {
+        for (Agent agent : agentRepository.findAllActifs()) {
             for (Echeance e : moteur.calculerEcheances(agent)) {
                 traiter(e, aujourdhui);
             }

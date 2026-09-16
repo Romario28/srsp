@@ -22,17 +22,11 @@ public class MoteurAnticipation {
 
     public List<Echeance> calculerEcheances(Agent a) {
         List<Echeance> resultats = new ArrayList<>();
-        if (!estEnActivite(a)) return resultats;
 
         ajouter(resultats, calculerRetraite(a));
         ajouter(resultats, calculerAvancementOuAnomalie(a));
         ajouter(resultats, calculerFinContrat(a));
         return resultats;
-    }
-
-    private boolean estEnActivite(Agent a) {
-        return a.getSanction() == null
-                || !CodesSituationAdministrative.SORTIE_DEFINITIVE.contains(a.getSanction().getCode());
     }
 
     private Echeance calculerRetraite(Agent a) {

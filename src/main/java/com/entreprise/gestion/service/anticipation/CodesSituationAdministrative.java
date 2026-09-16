@@ -1,11 +1,15 @@
 // CodesSituationAdministrative.java
 package com.entreprise.gestion.service.anticipation;
 
-import java.util.Set;
-
+/**
+ * Whitelist des situations administratives considérées comme « en activité ».
+ * Un agent est actif si {@code sanction.code = CODE_ACTIF} ou si {@code sanction} est null
+ * (absence de sanction = toujours traité comme actif).
+ */
 public final class CodesSituationAdministrative {
-    public static final Set<String> SORTIE_DEFINITIVE = Set.of(
-            "21", "25", "26", "10", "11", "35", "09", "27"
-    );
+
+    /** Unique code de situation administrative correspondant à un agent en activité. */
+    public static final String CODE_ACTIF = "00";
+
     private CodesSituationAdministrative() {}
 }
