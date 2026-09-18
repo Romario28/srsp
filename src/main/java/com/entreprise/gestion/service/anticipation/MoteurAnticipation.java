@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 
 @Service
@@ -17,6 +18,9 @@ public class MoteurAnticipation {
 
     @Value("${anticipation.retraite.age-legal:60}")
     private int ageRetraite;
+
+    @Value("${anticipation.grades-stagiaire:ST0E}")
+    private Set<String> gradesStagiaire;
 
     private final IndiceGrdCorpsRepository indiceGrdCorpsRepository;
 
@@ -36,47 +40,47 @@ public class MoteurAnticipation {
     }
 
 
+
+
+    // Dispatcher : préconditions + classification (TITULARISATION vs AVANCEMENT)
     private Echeance calculerAvancementOuAnomalie(Agent a) {
-        if (a.getGrade() == null)  return anomalie(a, "Grade manquant");
-        if (a.getCorps() == null)  return anomalie(a, "Corps manquant");
+        boolean gradeManquant = a.getGrade() == null;
+        boolean corpsManquant = a.getCorps() == null;
 
-        boolean estEld       = a.getStatut() == StatutAgent.ELD;
-        boolean estStagiaire = a.getGrade().getCode().startsWith("ST");
+        if (gradeManquant && corpsManquant) return anomalie(a, "Grade et corps manquants");
+        if (gradeManquant) return anomalie(a, "Grade manquant");
+        if (corpsManquant) return anomalie(a, "Corps manquant");
 
-        if (estEld)       return calculerPalierEld(a);
-        if (estStagiaire) return calculerTitularisation(a);
-        return calculerAvancementStandard(a);
+        TypeAnticipation type = gradesStagiaire.contains(a.getGrade().getCode())
+                ? TypeAnticipation.TITULARISATION
+                : TypeAnticipation.AVANCEMENT;
+
+        return calculerAvancement(a, type);
     }
 
-    private Echeance calculerPalierEld(Agent a) {
-        if (a.getAvanceDate() == null) return anomalie(a, "Date du dernier palier manquante (ELD)");
-        LocalDate echeance = a.getAvanceDate().plusYears(2);
-        return new Echeance(a.getMatricule(), nomComplet(a), TypeAnticipation.AVANCEMENT,
-                echeance, "Palier suivant (ELD, +2 ans fixe)");
-    }
-
-    private Echeance calculerTitularisation(Agent a) {
-        LocalDate dateAncrage = a.getAvanceDate() != null ? a.getAvanceDate() : a.getDateDebutContrat();
-        if (dateAncrage == null) {
-            return anomalie(a, "Ni date d'avancement ni date de début de contrat renseignée (stagiaire)");
+    /**
+     * Calcul pur : suppose grade et corps déjà vérifiés non-null par l'appelant
+     * (calculerAvancementOuAnomalie) — ne les revérifie pas.
+     * échéance = (avance_date ?: date_debut_contrat) + durée_requise(corps, grade),
+     * identique pour tous les statuts (FONCTIONNAIRE, CONTRACTUEL, ELD).
+     */
+    private Echeance calculerAvancement(Agent a, TypeAnticipation type) {
+        boolean ancrageParContrat = (a.getAvanceDate() == null);
+        LocalDate ancrage = ancrageParContrat ? a.getDateDebutContrat() : a.getAvanceDate();
+        if (ancrage == null) {
+            return anomalie(a, "Ni date d'avancement ni date de début de contrat renseignée");
         }
+
         Integer duree = dureeRequise(a);
         if (duree == null) {
-            return anomalie(a, "Durée de stage non renseignée pour "
-                    + a.getCorps().getCode() + "/" + a.getGrade().getCode());
+            return anomalie(a, "Durée requise non renseignée pour "
+                    + a.getCorps().getCode() + "/" + a.getCorps().getCategorie()
+                    + "/" + a.getGrade().getCode());
         }
-        LocalDate echeance = dateAncrage.plusYears(duree);
-        return new Echeance(a.getMatricule(), nomComplet(a), TypeAnticipation.TITULARISATION, echeance, null);
-    }
 
+        String details = ancrageParContrat ? "Ancrage : date de début de contrat (avance_date absente)" : null;
 
-    private Echeance calculerAvancementStandard(Agent a) {
-        if (a.getAvanceDate() == null) return anomalie(a, "Date du dernier avancement manquante");
-        Integer duree = dureeRequise(a);
-        if (duree == null) return anomalie(a, "Durée requise non renseignée pour "
-                + a.getCorps().getCode() + "/" + a.getGrade().getCode());
-        LocalDate echeance = a.getAvanceDate().plusYears(duree);
-        return new Echeance(a.getMatricule(), nomComplet(a), TypeAnticipation.AVANCEMENT, echeance, null);
+        return new Echeance(a.getMatricule(), nomComplet(a), type, ancrage.plusYears(duree), details);
     }
 
 

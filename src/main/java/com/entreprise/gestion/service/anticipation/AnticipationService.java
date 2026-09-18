@@ -71,13 +71,22 @@ public class AnticipationService {
                 : 0;
 
         String details = e.details();
-        if (e.type() != TypeAnticipation.ANOMALIE && jours < 0 && details == null) {
-            details = "Dépassé de " + formatRetard(-jours);
+        if (e.type() != TypeAnticipation.ANOMALIE && jours < 0) {
+            String retard = "Dépassé de " + formatRetard(-jours);
+            details = (details != null) ? details + " — " + retard : retard;
         }
 
         return new AlerteAnticipation(
-                a.getMatricule(), a.getPrenoms() + " " + a.getNom(), e.type(), e.dateEcheance(),
-                jours, details, a.getDateNaissance(), a.getAvanceDate(), a.getDateDebutContrat(),
+                a.getMatricule(),
+                a.getPrenoms() + " " + a.getNom(),
+                e.type(),
+                e.dateEcheance(),
+                jours,
+                details,
+                a.getStatut(),
+                a.getDateNaissance(),
+                a.getAvanceDate(),
+                a.getDateDebutContrat(),
                 a.getDateFinContrat(),
                 a.getCorps() != null ? a.getCorps().getCode() : null,
                 a.getGrade() != null ? a.getGrade().getCode() : null,
