@@ -1,10 +1,7 @@
 package com.entreprise.gestion.config;
 
 import com.entreprise.gestion.entite.*;
-import com.entreprise.gestion.entite.anticipation.ConfigurationDelai;
-import com.entreprise.gestion.entite.anticipation.TypeAnticipation;
 import com.entreprise.gestion.repository.*;
-import com.entreprise.gestion.repository.anticipation.ConfigurationDelaiRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -12,7 +9,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.util.List;
 import java.util.Set;
 
 /**
@@ -42,7 +38,6 @@ public class DataInitializer implements CommandLineRunner {
     private final UtilisateurRoleRepository utilisateurRoleRepository;
     private final PorteeDelegueeRepository  porteeDelegueeRepository;
     private final PasswordEncoder           passwordEncoder;
-    private final ConfigurationDelaiRepository configurationDelaiRepository;
 
     @Override
     @Transactional
@@ -132,12 +127,9 @@ public class DataInitializer implements CommandLineRunner {
                 .utilisateur(uJean).departement(drh).typeAcces(TypeAcces.LECTURE)
                 .dateDebut(LocalDate.now()).dateFin(LocalDate.now().plusMonths(1)).accordePar(uVoahangy).build());
 
-//        configurationDelaiRepository.saveAll(List.of(
-//                ConfigurationDelai.builder().type(TypeAnticipation.DEPART_RETRAITE).delaiPrevenanceJours(365).build(),
-//                ConfigurationDelai.builder().type(TypeAnticipation.AVANCEMENT).delaiPrevenanceJours(30).build(),
-//                ConfigurationDelai.builder().type(TypeAnticipation.TITULARISATION).delaiPrevenanceJours(60).build(),
-//                ConfigurationDelai.builder().type(TypeAnticipation.FIN_CONTRAT).delaiPrevenanceJours(90).build()
-//        ));
+        // Aucune fenêtre d'anticipation n'est semée ici volontairement : la table
+        // anticipation.configuration_delai ne contient que des surcharges explicites,
+        // les valeurs par défaut restant dans FenetresParDefaut (voir ConfigurationDelaiService).
         System.out.println("""
 
             ╔═══════════════════════════════════════════════════════════════╗
