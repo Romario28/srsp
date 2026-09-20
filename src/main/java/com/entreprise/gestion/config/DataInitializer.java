@@ -132,11 +132,18 @@ public class DataInitializer implements CommandLineRunner {
                 .utilisateur(uJean).departement(drh).typeAcces(TypeAcces.LECTURE)
                 .dateDebut(LocalDate.now()).dateFin(LocalDate.now().plusMonths(1)).accordePar(uVoahangy).build());
 
+        // Fenêtres d'anticipation (prévenance en jours avant l'échéance, retard en jours après).
+        // Laissées vides par défaut : chaque type retombe alors sur son couple codé en dur
+        // (FenetresParDefaut), surchargeable en base sans redéploiement.
 //        configurationDelaiRepository.saveAll(List.of(
-//                ConfigurationDelai.builder().type(TypeAnticipation.DEPART_RETRAITE).delaiPrevenanceJours(365).build(),
-//                ConfigurationDelai.builder().type(TypeAnticipation.AVANCEMENT).delaiPrevenanceJours(30).build(),
-//                ConfigurationDelai.builder().type(TypeAnticipation.TITULARISATION).delaiPrevenanceJours(60).build(),
-//                ConfigurationDelai.builder().type(TypeAnticipation.FIN_CONTRAT).delaiPrevenanceJours(90).build()
+//                ConfigurationDelai.builder().type(TypeAnticipation.DEPART_RETRAITE)
+//                        .delaiPrevenanceJours(548).retardJours(365).build(),
+//                ConfigurationDelai.builder().type(TypeAnticipation.AVANCEMENT)
+//                        .delaiPrevenanceJours(90).retardJours(365).build(),
+//                ConfigurationDelai.builder().type(TypeAnticipation.TITULARISATION)
+//                        .delaiPrevenanceJours(90).retardJours(365).build(),
+//                ConfigurationDelai.builder().type(TypeAnticipation.FIN_CONTRAT)
+//                        .delaiPrevenanceJours(90).retardJours(30).build()
 //        ));
         System.out.println("""
 
