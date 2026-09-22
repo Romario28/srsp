@@ -3,7 +3,6 @@ package com.entreprise.gestion.service.anticipation;
 import com.entreprise.gestion.entite.anticipation.*;
 import com.entreprise.gestion.entite.anticipation.Agent;
 import com.entreprise.gestion.repository.anticipation.AlerteRepository;
-import com.entreprise.gestion.repository.anticipation.ConfigurationDelaiRepository;
 import com.entreprise.gestion.repository.referentiel.AgentRepository;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
@@ -13,8 +12,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * Processus quotidien qui satisfait l'exigence "recalcul automatique" :
@@ -54,15 +51,17 @@ public class BatchAnticipation {
         }
     }
 
+    // MODIFIÉ — remplace le seuil unique "resoudreDelai(type):int" + "joursRestants > delai"
+    // par la fenêtre à deux bornes, via la même méthode contient() que le service API.
     private void traiter(Echeance e, LocalDate aujourdhui) {
         if (e.type() == TypeAnticipation.ANOMALIE) {
             upsert(e, null);
             return;
         }
 
-        int delai = configurationDelaiService.resoudreDelai(e.type());
+        FenetreAnticipation fenetre = configurationDelaiService.resoudreFenetre(e.type());   // MODIFIÉ
         long joursRestants = ChronoUnit.DAYS.between(aujourdhui, e.dateEcheance());
-        if (joursRestants > delai) return;
+        if (!fenetre.contient(joursRestants)) return;                                          // MODIFIÉ
 
         upsert(e, e.dateEcheance());
     }

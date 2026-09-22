@@ -18,41 +18,45 @@ public class ConfigurationDelaiService {
 
     private final ConfigurationDelaiRepository configurationDelaiRepository;
 
-    /** Délai effectif : ligne DB active si elle existe, sinon valeur par défaut codée en dur. */
+    // MODIFIÉ — renommée : resoudreDelai(type):int → resoudreFenetre(type):FenetreAnticipation
+    /** Fenêtre effective : ligne DB active si elle existe, sinon la fenêtre par défaut. */
     @Transactional(readOnly = true)
-    public int resoudreDelai(TypeAnticipation type) {
+    public FenetreAnticipation resoudreFenetre(TypeAnticipation type) {
         return configurationDelaiRepository.findById(type)
                 .filter(ConfigurationDelai::isActif)
-                .map(ConfigurationDelai::getDelaiPrevenanceJours)
-                .orElse(DelaisParDefaut.pour(type));
+                .map(c -> new FenetreAnticipation(c.getDelaiPrevenanceJours(), c.getDelaiRetardJours())) // MODIFIÉ
+                .orElseGet(() -> DelaisParDefaut.pour(type));
     }
 
+    // MODIFIÉ — renommée : resoudreTous() → resoudreToutes(), retourne des FenetreAnticipation
     @Transactional(readOnly = true)
-    public Map<TypeAnticipation, Integer> resoudreTous() {
+    public Map<TypeAnticipation, FenetreAnticipation> resoudreToutes() {
         return Arrays.stream(TypeAnticipation.values())
                 .filter(t -> t != TypeAnticipation.ANOMALIE)
-                .collect(Collectors.toMap(t -> t, this::resoudreDelai));
+                .collect(Collectors.toMap(t -> t, this::resoudreFenetre));
     }
 
-    /** Crée ou met à jour la surcharge pour un type. */
+    // MODIFIÉ — signature : definir(type, int delaiJours) → definir(type, int prevenanceJours, int retardJours)
+    /** Crée ou met à jour la fenêtre pour un type. */
     @Transactional
-    public ConfigurationDelai definir(TypeAnticipation type, int delaiJours) {
+    public ConfigurationDelai definir(TypeAnticipation type, int prevenanceJours, int retardJours) {
         if (type == TypeAnticipation.ANOMALIE) {
             throw new BusinessException("TYPE_SANS_DELAI",
-                    "Les anomalies n'ont pas de délai de prévenance : elles sont toujours remontées.");
+                    "Les anomalies n'ont pas de fenêtre configurable : elles sont toujours remontées.");
         }
-        if (delaiJours < 0) {
-            throw new BusinessException("DELAI_INVALIDE", "Le délai de prévenance doit être positif ou nul.");
+        if (prevenanceJours < 0 || retardJours < 0) {   // MODIFIÉ — valide les deux bornes
+            throw new BusinessException("DELAI_INVALIDE", "Les délais doivent être positifs ou nuls.");
         }
 
         ConfigurationDelai config = configurationDelaiRepository.findById(type)
                 .orElse(ConfigurationDelai.builder().type(type).build());
-        config.setDelaiPrevenanceJours(delaiJours);
+        config.setDelaiPrevenanceJours(prevenanceJours);
+        config.setDelaiRetardJours(retardJours);   // AJOUTÉ
         config.setActif(true);
         return configurationDelaiRepository.save(config);
     }
 
-    /** Retire la surcharge : le type retombe automatiquement sur sa valeur par défaut. */
+    // reinitialiser() — inchangée
     @Transactional
     public void reinitialiser(TypeAnticipation type) {
         configurationDelaiRepository.findById(type).ifPresent(configurationDelaiRepository::delete);

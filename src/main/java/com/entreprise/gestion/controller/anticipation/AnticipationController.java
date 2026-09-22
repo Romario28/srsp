@@ -1,4 +1,3 @@
-// AnticipationController.java
 package com.entreprise.gestion.controller.anticipation;
 
 import com.entreprise.gestion.entite.anticipation.StatutAgent;
@@ -17,39 +16,45 @@ public class AnticipationController {
 
     private final AnticipationService anticipationService;
 
+    // MODIFIÉ — "Integer horizonJours" → "Integer prevenanceJours, Integer retardJours"
+    // (StatutAgent statut : paramètre déjà existant, conservé à l'identique)
     @GetMapping("/retraite")
     @PreAuthorize("hasAnyRole('ADMIN','EMPLOYE')")
     public ResponseEntity<List<AlerteAnticipation>> retraite(
-            @RequestParam(required = false) Integer horizonJours,
+            @RequestParam(required = false) Integer prevenanceJours,
+            @RequestParam(required = false) Integer retardJours,
             @RequestParam(required = false) StatutAgent statut) {
-        return ResponseEntity.ok(anticipationService.departsRetraite(horizonJours, statut));
+        return ResponseEntity.ok(anticipationService.departsRetraite(prevenanceJours, retardJours, statut));
     }
-
 
     @GetMapping("/avancement")
     @PreAuthorize("hasAnyRole('ADMIN','EMPLOYE')")
     public ResponseEntity<List<AlerteAnticipation>> avancement(
-            @RequestParam(required = false) Integer horizonJours,
+            @RequestParam(required = false) Integer prevenanceJours,
+            @RequestParam(required = false) Integer retardJours,
             @RequestParam(required = false) StatutAgent statut) {
-        return ResponseEntity.ok(anticipationService.avancementsDus(horizonJours, statut));
+        return ResponseEntity.ok(anticipationService.avancementsDus(prevenanceJours, retardJours, statut));
     }
 
     @GetMapping("/titularisation")
     @PreAuthorize("hasAnyRole('ADMIN','EMPLOYE')")
     public ResponseEntity<List<AlerteAnticipation>> titularisation(
-            @RequestParam(required = false) Integer horizonJours,
+            @RequestParam(required = false) Integer prevenanceJours,
+            @RequestParam(required = false) Integer retardJours,
             @RequestParam(required = false) StatutAgent statut) {
-        return ResponseEntity.ok(anticipationService.titularisationsDues(horizonJours, statut));
+        return ResponseEntity.ok(anticipationService.titularisationsDues(prevenanceJours, retardJours, statut));
     }
 
     @GetMapping("/fin-contrat")
     @PreAuthorize("hasAnyRole('ADMIN','EMPLOYE')")
     public ResponseEntity<List<AlerteAnticipation>> finContrat(
-            @RequestParam(required = false) Integer horizonJours,
+            @RequestParam(required = false) Integer prevenanceJours,
+            @RequestParam(required = false) Integer retardJours,
             @RequestParam(required = false) StatutAgent statut) {
-        return ResponseEntity.ok(anticipationService.finsContrat(horizonJours, statut));
+        return ResponseEntity.ok(anticipationService.finsContrat(prevenanceJours, retardJours, statut));
     }
 
+    // anomalies() — inchangée
     @GetMapping("/anomalies")
     @PreAuthorize("hasAnyRole('ADMIN','EMPLOYE')")
     public ResponseEntity<List<AlerteAnticipation>> anomalies(

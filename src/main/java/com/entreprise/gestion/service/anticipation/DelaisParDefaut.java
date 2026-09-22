@@ -3,21 +3,30 @@ package com.entreprise.gestion.service.anticipation;
 import com.entreprise.gestion.entite.anticipation.TypeAnticipation;
 import java.util.Map;
 
-/** Valeurs par défaut codées en dur — utilisées tant qu'aucune ConfigurationDelai active n'existe pour le type. */
+/**
+ * Fenêtres par défaut codées en dur — utilisées tant qu'aucune ConfigurationDelai
+ * active n'existe en base. Les bornes de retard ci-dessous sont des valeurs de
+ * démarrage à valider avec le métier.
+ */
+// MODIFIÉ — javadoc : un seul délai devient une fenêtre à deux bornes
 public final class DelaisParDefaut {
 
-    private static final Map<TypeAnticipation, Integer> VALEURS = Map.of(
-            TypeAnticipation.DEPART_RETRAITE, 548,   // 18 mois
-            TypeAnticipation.AVANCEMENT,      90,
-            TypeAnticipation.TITULARISATION,  90,
-            TypeAnticipation.FIN_CONTRAT,     90
-            // ANOMALIE : pas de délai — toujours remontée, voir AnticipationService.anomalies()
+    // MODIFIÉ — Map<TypeAnticipation, Integer> → Map<TypeAnticipation, FenetreAnticipation>
+    // avant : TypeAnticipation.DEPART_RETRAITE, 548
+    // après : un couple (prévenance, retard) par type
+    private static final Map<TypeAnticipation, FenetreAnticipation> VALEURS = Map.of(
+            TypeAnticipation.DEPART_RETRAITE, new FenetreAnticipation(548, 30),
+            TypeAnticipation.AVANCEMENT,      new FenetreAnticipation(90, 30),
+            TypeAnticipation.TITULARISATION,  new FenetreAnticipation(90, 30),
+            TypeAnticipation.FIN_CONTRAT,     new FenetreAnticipation(90, 30)
+            // ANOMALIE : pas de fenêtre — toujours remontée, voir AnticipationService.anomalies()
     );
 
-    public static int pour(TypeAnticipation type) {
-        Integer v = VALEURS.get(type);
+    // MODIFIÉ — "static int pour(...)" devient "static FenetreAnticipation pour(...)"
+    public static FenetreAnticipation pour(TypeAnticipation type) {
+        FenetreAnticipation v = VALEURS.get(type);
         if (v == null) {
-            throw new IllegalArgumentException("Aucun délai par défaut défini pour : " + type);
+            throw new IllegalArgumentException("Aucune fenêtre par défaut définie pour : " + type);
         }
         return v;
     }
