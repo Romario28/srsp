@@ -44,5 +44,6 @@ public class AlerteDTO {
                 .dateAcquittement(a.getDateAcquittement())
                 .acquitteeParEmail(a.getAcquitteePar() != null ? a.getAcquitteePar().getEmail() : null)
                 .build();
+
     }
 }
