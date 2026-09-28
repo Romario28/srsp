@@ -1,3 +1,6 @@
+# Profil local (activé par défaut via spring.profiles.default dans application.yaml).
+# Déclenche AnticipationDevDataInitializer (agents + alertes d'exemple).
+
 app:
   jwt:
     # Local development key. Override with JWT_SECRET if needed.

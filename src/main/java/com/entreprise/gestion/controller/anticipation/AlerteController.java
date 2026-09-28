@@ -1,7 +1,8 @@
-
 package com.entreprise.gestion.controller.anticipation;
 
-import com.entreprise.gestion.entite.anticipation.*;
+import com.entreprise.gestion.dto.anticipation.AlerteDTO;
+import com.entreprise.gestion.entite.anticipation.StatutAlerte;
+import com.entreprise.gestion.entite.anticipation.TypeAnticipation;
 import com.entreprise.gestion.security.UserDetailsImpl;
 import com.entreprise.gestion.service.anticipation.AlerteService;
 import lombok.RequiredArgsConstructor;
@@ -21,7 +22,7 @@ public class AlerteController {
     private final AlerteService alerteService;
 
     @GetMapping
-    public ResponseEntity<Page<Alerte>> lister(
+    public ResponseEntity<Page<AlerteDTO>> lister(
             @RequestParam(required = false) TypeAnticipation type,
             @RequestParam(required = false) StatutAlerte statut,
             @RequestParam(required = false) String matricule,
@@ -30,13 +31,13 @@ public class AlerteController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Alerte> consulter(@PathVariable Long id) {
+    public ResponseEntity<AlerteDTO> consulter(@PathVariable Long id) {
         return ResponseEntity.ok(alerteService.consulter(id));
     }
 
     @PatchMapping("/{id}/acquitter")
-    public ResponseEntity<Alerte> acquitter(@PathVariable Long id,
-                                            @AuthenticationPrincipal UserDetailsImpl principal) {
+    public ResponseEntity<AlerteDTO> acquitter(@PathVariable Long id,
+                                               @AuthenticationPrincipal UserDetailsImpl principal) {
         return ResponseEntity.ok(alerteService.acquitter(id, principal));
     }
 }

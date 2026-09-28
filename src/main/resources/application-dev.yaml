@@ -1,0 +1,4 @@
+# Profil de développement — active AnticipationDevDataInitializer
+# (référentiel RH, agents et alertes d'exemple).
+# Usage : --spring.profiles.active=dev
+# (le profil local est activé par défaut via spring.profiles.default)

@@ -7,6 +7,7 @@ import com.entreprise.gestion.repository.*;
 import com.entreprise.gestion.repository.anticipation.ConfigurationDelaiRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,6 +32,7 @@ import java.util.Set;
  *                                                     → équivaut à "RH local" pour la DFI
  */
 @Component
+@Order(1)
 @RequiredArgsConstructor
 public class DataInitializer implements CommandLineRunner {
 

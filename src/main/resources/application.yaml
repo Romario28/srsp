@@ -2,6 +2,8 @@
 #  datasource:
 #    url: jdbc:h2:mem:rbacdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;INIT=CREATE SCHEMA IF NOT EXISTS gestion_utilisateurs
 spring:
+  profiles:
+    default: local
   datasource:
     url: jdbc:h2:mem:rbacdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;INIT=CREATE SCHEMA IF NOT EXISTS anticipation\;CREATE SCHEMA IF NOT EXISTS referentiel_rh\;CREATE SCHEMA IF NOT EXISTS gestion_utilisateurs
     driver-class-name: org.h2.Driver
