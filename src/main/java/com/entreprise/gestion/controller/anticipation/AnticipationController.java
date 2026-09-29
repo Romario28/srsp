@@ -1,7 +1,7 @@
 package com.entreprise.gestion.controller.anticipation;
 
 import com.entreprise.gestion.entite.anticipation.StatutAgent;
-import com.entreprise.gestion.service.anticipation.AlerteAnticipation;
+import com.entreprise.gestion.service.anticipation.EcheanceAnticipeeDTO;
 import com.entreprise.gestion.service.anticipation.AnticipationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -20,7 +20,7 @@ public class AnticipationController {
     // MODIFIÉ — ajout dateDebut/dateFin (format ISO attendu : yyyy-MM-dd, ex. ?dateDebut=2026-01-01)
     @GetMapping("/retraite")
     @PreAuthorize("hasAnyRole('ADMIN','EMPLOYE')")
-    public ResponseEntity<List<AlerteAnticipation>> retraite(
+    public ResponseEntity<List<EcheanceAnticipeeDTO>> retraite(
             @RequestParam(required = false) Integer prevenanceJours,
             @RequestParam(required = false) Integer retardJours,
             @RequestParam(required = false) LocalDate dateDebut,
@@ -31,7 +31,7 @@ public class AnticipationController {
 
     @GetMapping("/avancement")
     @PreAuthorize("hasAnyRole('ADMIN','EMPLOYE')")
-    public ResponseEntity<List<AlerteAnticipation>> avancement(
+    public ResponseEntity<List<EcheanceAnticipeeDTO>> avancement(
             @RequestParam(required = false) Integer prevenanceJours,
             @RequestParam(required = false) Integer retardJours,
             @RequestParam(required = false) LocalDate dateDebut,
@@ -42,7 +42,7 @@ public class AnticipationController {
 
     @GetMapping("/titularisation")
     @PreAuthorize("hasAnyRole('ADMIN','EMPLOYE')")
-    public ResponseEntity<List<AlerteAnticipation>> titularisation(
+    public ResponseEntity<List<EcheanceAnticipeeDTO>> titularisation(
             @RequestParam(required = false) Integer prevenanceJours,
             @RequestParam(required = false) Integer retardJours,
             @RequestParam(required = false) LocalDate dateDebut,
@@ -53,7 +53,7 @@ public class AnticipationController {
 
     @GetMapping("/fin-contrat")
     @PreAuthorize("hasAnyRole('ADMIN','EMPLOYE')")
-    public ResponseEntity<List<AlerteAnticipation>> finContrat(
+    public ResponseEntity<List<EcheanceAnticipeeDTO>> finContrat(
             @RequestParam(required = false) Integer prevenanceJours,
             @RequestParam(required = false) Integer retardJours,
             @RequestParam(required = false) LocalDate dateDebut,
@@ -65,7 +65,7 @@ public class AnticipationController {
     // anomalies() — INCHANGÉE
     @GetMapping("/anomalies")
     @PreAuthorize("hasAnyRole('ADMIN','EMPLOYE')")
-    public ResponseEntity<List<AlerteAnticipation>> anomalies(
+    public ResponseEntity<List<EcheanceAnticipeeDTO>> anomalies(
             @RequestParam(required = false) StatutAgent statut) {
         return ResponseEntity.ok(anticipationService.anomalies(statut));
     }

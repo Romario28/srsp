@@ -25,32 +25,32 @@ public class AnticipationService {
 
     // MODIFIÉ — ajout dateDebut/dateFin (filtre absolu, prioritaire sur prevenanceJours/retardJours)
     @Transactional(readOnly = true)
-    public List<AlerteAnticipation> departsRetraite(Integer prevenanceJours, Integer retardJours,
-                                                     LocalDate dateDebut, LocalDate dateFin, StatutAgent statut) {
+    public List<EcheanceAnticipeeDTO> departsRetraite(Integer prevenanceJours, Integer retardJours,
+                                                      LocalDate dateDebut, LocalDate dateFin, StatutAgent statut) {
         return calculerParType(TypeAnticipation.DEPART_RETRAITE, prevenanceJours, retardJours, dateDebut, dateFin, statut);
     }
 
     @Transactional(readOnly = true)
-    public List<AlerteAnticipation> avancementsDus(Integer prevenanceJours, Integer retardJours,
-                                                    LocalDate dateDebut, LocalDate dateFin, StatutAgent statut) {
+    public List<EcheanceAnticipeeDTO> avancementsDus(Integer prevenanceJours, Integer retardJours,
+                                                     LocalDate dateDebut, LocalDate dateFin, StatutAgent statut) {
         return calculerParType(TypeAnticipation.AVANCEMENT, prevenanceJours, retardJours, dateDebut, dateFin, statut);
     }
 
     @Transactional(readOnly = true)
-    public List<AlerteAnticipation> titularisationsDues(Integer prevenanceJours, Integer retardJours,
-                                                         LocalDate dateDebut, LocalDate dateFin, StatutAgent statut) {
+    public List<EcheanceAnticipeeDTO> titularisationsDues(Integer prevenanceJours, Integer retardJours,
+                                                          LocalDate dateDebut, LocalDate dateFin, StatutAgent statut) {
         return calculerParType(TypeAnticipation.TITULARISATION, prevenanceJours, retardJours, dateDebut, dateFin, statut);
     }
 
     @Transactional(readOnly = true)
-    public List<AlerteAnticipation> finsContrat(Integer prevenanceJours, Integer retardJours,
-                                                 LocalDate dateDebut, LocalDate dateFin, StatutAgent statut) {
+    public List<EcheanceAnticipeeDTO> finsContrat(Integer prevenanceJours, Integer retardJours,
+                                                  LocalDate dateDebut, LocalDate dateFin, StatutAgent statut) {
         return calculerParType(TypeAnticipation.FIN_CONTRAT, prevenanceJours, retardJours, dateDebut, dateFin, statut);
     }
 
     // anomalies() — INCHANGÉE : pas de dateEcheance à filtrer (voir note en fin de réponse)
     @Transactional(readOnly = true)
-    public List<AlerteAnticipation> anomalies(StatutAgent statut) {
+    public List<EcheanceAnticipeeDTO> anomalies(StatutAgent statut) {
         return agentRepository.findAllActifs().stream()
                 .filter(a -> statut == null || a.getStatut() == statut)
                 .flatMap(a -> moteur.calculerEcheances(a).stream()
@@ -62,15 +62,15 @@ public class AnticipationService {
     /**
      * prevenanceJours/retardJours null → fenêtre résolue depuis la configuration
      * (DB active sinon défaut) ; non-null → surcharge ponctuelle de cet appel.
-     *
+
      * dateDebut/dateFin (l'un des deux suffit) : filtre par intervalle de dates
      * ABSOLUES sur dateEcheance. PRIORITAIRE — s'il est actif, prevenanceJours/
      * retardJours et la configuration en base sont entièrement ignorés (même la
      * résolution de la fenêtre est court-circuitée, pas seulement son usage).
      */
     // MODIFIÉ — signature + corps : ajout dateDebut/dateFin, branchement filtre absolu vs fenêtre relative
-    private List<AlerteAnticipation> calculerParType(TypeAnticipation type, Integer prevenanceJours, Integer retardJours,
-                                                      LocalDate dateDebut, LocalDate dateFin, StatutAgent statut) {
+    private List<EcheanceAnticipeeDTO> calculerParType(TypeAnticipation type, Integer prevenanceJours, Integer retardJours,
+                                                       LocalDate dateDebut, LocalDate dateFin, StatutAgent statut) {
 
         // AJOUTÉ — même validation que PorteeDelegueeService.accorder (code DATES_INVALIDES réutilisé)
         if (dateDebut != null && dateFin != null && dateFin.isBefore(dateDebut)) {
@@ -99,7 +99,7 @@ public class AnticipationService {
                 .filter(al -> filtreDatesActif
                         ? dansIntervalle(al.dateEcheance(), dateDebut, dateFin)
                         : fenetreFinale.contient(al.joursRestants()))
-                .sorted(Comparator.comparingLong(AlerteAnticipation::joursRestants))
+                .sorted(Comparator.comparingLong(EcheanceAnticipeeDTO::joursRestants))
                 .collect(Collectors.toList());
     }
 
@@ -113,7 +113,7 @@ public class AnticipationService {
     }
 
     // versAlerte() et formatRetard() — INCHANGÉES
-    private AlerteAnticipation versAlerte(Agent a, Echeance e) {
+    private EcheanceAnticipeeDTO versAlerte(Agent a, Echeance e) {
         long jours = e.dateEcheance() != null
                 ? ChronoUnit.DAYS.between(LocalDate.now(), e.dateEcheance())
                 : 0;
@@ -124,7 +124,7 @@ public class AnticipationService {
             details = (details != null) ? details + " — " + retard : retard;
         }
 
-        return new AlerteAnticipation(
+        return new EcheanceAnticipeeDTO(
                 a.getMatricule(),
                 a.getPrenoms() + " " + a.getNom(),
                 e.type(),
