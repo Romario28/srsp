@@ -4,7 +4,7 @@ import com.entreprise.gestion.entite.anticipation.StatutAgent;
 import com.entreprise.gestion.entite.anticipation.TypeAnticipation;
 import java.time.LocalDate;
 
-public record AlerteAnticipation(
+public record EcheanceAnticipeeDTO(
         String matricule,
         String nomComplet,
         TypeAnticipation type,
