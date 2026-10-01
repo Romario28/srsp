@@ -19,6 +19,7 @@ public class IndiceGrdCorpsImporter implements ImporteurExcel {
     private final IndiceGrdCorpsRepository indiceGrdCorpsRepository;
     private final GradeRepository gradeRepository;
     private final CorpsRepository corpsRepository;
+    private final VerificateurLongueurs verificateur;
 
     @Override public String cle() { return "indice-grade-corps"; }
 
@@ -33,6 +34,7 @@ public class IndiceGrdCorpsImporter implements ImporteurExcel {
         try (Workbook wb = WorkbookFactory.create(fichier)) {
             Sheet feuille = wb.getSheetAt(0);
             Map<String, Integer> col = LectureExcel.indexerEntetes(feuille);
+            LectureExcel.exigerColonnes(col, "GRADE_CODE", "CORPS_CODE", "CATEGORIE_CODE", "INDICE");
 
             int idxGrade     = LectureExcel.colonneObligatoire(col, "GRADE_CODE");
             int idxCorps     = LectureExcel.colonneObligatoire(col, "CORPS_CODE");
@@ -75,6 +77,7 @@ public class IndiceGrdCorpsImporter implements ImporteurExcel {
                     boolean nouveau = (entite.getIndice() == null);
                     entite.setIndice(indice);
                     if (duree != null) entite.setDureeRequise(duree);
+                    verificateur.verifier(entite);
                     indiceGrdCorpsRepository.save(entite);
 
                     if (nouveau) crees++; else misAJour++;

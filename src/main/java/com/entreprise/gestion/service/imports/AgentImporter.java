@@ -30,6 +30,14 @@ public class AgentImporter implements ImporteurExcel {
     private final MinistereRepository   ministereRepository;
     private final HeeRepository         heeRepository;
     private final EntityManager         entityManager;
+    private final VerificateurLongueurs verificateur;
+
+    private static final String[] COLONNES_OBLIGATOIRES = {
+            "POSTE_AGENT_NUMERO", "AGENT_MATRICULE", "AGENT_NOM", "AGENT_PRENOMS", "AGENT_DATE_NAIS",
+            "AGENT_CIN", "AGENT_SEXE", "STATUT", "CORPS_CODE", "GRADE_CODE", "CATEGORIE", "INDICE",
+            "HEE_CODE", "HEE_CATEGORIE_CODE", "SECTION_CODE", "FIV_CODE", "SANCTION_CODE", "SOA",
+            "POSTE_AGENT_DATE_DEBUT_CONTRAT", "POSTE_AGENT_DATE_FIN_CONTRAT", "AVANCE_DATE", "REG_CODE", "MIN_CODE"
+    };
 
     @Override public String cle() { return "agents"; }
 
@@ -55,6 +63,7 @@ public class AgentImporter implements ImporteurExcel {
         try (Workbook wb = WorkbookFactory.create(fichier)) {
             Sheet feuille = wb.getSheetAt(0);
             Map<String, Integer> col = LectureExcel.indexerEntetes(feuille);
+            LectureExcel.exigerColonnes(col, COLONNES_OBLIGATOIRES);
 
             int idxPoste        = LectureExcel.colonneObligatoire(col, "POSTE_AGENT_NUMERO");
             int idxMatricule    = LectureExcel.colonneObligatoire(col, "AGENT_MATRICULE");
@@ -127,6 +136,7 @@ public class AgentImporter implements ImporteurExcel {
                     a.setMinistere(resoudre(LectureExcel.normaliserCode(LectureExcel.texte(ligne, idxMinCode)),
                             ministereParCode, "min_code", nonResolus, exemplesNonResolus));
 
+                    verificateur.verifier(a);
                     agentRepository.save(a);
                     if (nouveau) crees++; else misAJour++;
 

@@ -6,10 +6,12 @@ import com.entreprise.gestion.entite.anticipation.TypeAnticipation;
 import com.entreprise.gestion.service.anticipation.ConfigurationDelaiService;
 import com.entreprise.gestion.service.anticipation.DelaisParDefaut;
 import com.entreprise.gestion.service.anticipation.FenetreAnticipation; // AJOUTÉ
+import com.entreprise.gestion.security.UserDetailsImpl;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Arrays;
@@ -49,8 +51,9 @@ public class ConfigurationDelaiController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ConfigurationDelaiDTO> definir(
             @PathVariable TypeAnticipation type,
-            @Valid @RequestBody DefinirDelaiRequest req) {
-        configurationDelaiService.definir(type, req.getPrevenanceJours(), req.getRetardJours()); // MODIFIÉ
+            @Valid @RequestBody DefinirDelaiRequest req,
+            @AuthenticationPrincipal UserDetailsImpl principal) {
+        configurationDelaiService.definir(type, req.getPrevenanceJours(), req.getRetardJours(), principal);
         FenetreAnticipation defaut = DelaisParDefaut.pour(type);   // MODIFIÉ
         return ResponseEntity.ok(new ConfigurationDelaiDTO(
                 type, req.getPrevenanceJours(), req.getRetardJours(),
@@ -60,8 +63,9 @@ public class ConfigurationDelaiController {
     // reinitialiser() — inchangée
     @DeleteMapping("/{type}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Void> reinitialiser(@PathVariable TypeAnticipation type) {
-        configurationDelaiService.reinitialiser(type);
+    public ResponseEntity<Void> reinitialiser(@PathVariable TypeAnticipation type,
+                                               @AuthenticationPrincipal UserDetailsImpl principal) {
+        configurationDelaiService.reinitialiser(type, principal);
         return ResponseEntity.noContent().build();
     }
 }

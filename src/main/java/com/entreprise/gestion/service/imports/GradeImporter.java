@@ -19,6 +19,7 @@ import java.util.stream.Collectors;
 public class GradeImporter implements ImporteurExcel {
 
     private final GradeRepository gradeRepository;
+    private final VerificateurLongueurs verificateur;
 
     @Override public String cle() { return "grade"; }
 
@@ -43,6 +44,7 @@ public class GradeImporter implements ImporteurExcel {
                     boolean nouveau = (g.getCode() == null);
                     g.setCode(code);
                     g.setLibelle(LectureExcel.texte(ligne, 1));
+                    verificateur.verifier(g);
                     gradeRepository.save(g);
 
                     if (nouveau) crees++; else misAJour++;

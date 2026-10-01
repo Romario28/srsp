@@ -20,6 +20,7 @@ import java.util.stream.Collectors;
 public class HeeImporter implements ImporteurExcel {
 
     private final HeeRepository heeRepository;
+    private final VerificateurLongueurs verificateur;
 
     @Override public String cle() { return "hee"; }
 
@@ -43,6 +44,7 @@ public class HeeImporter implements ImporteurExcel {
                     boolean nouveau = (h.getCode() == null);
                     h.setCode(code);
                     h.setLibelle(LectureExcel.texte(ligne, 1));
+                    verificateur.verifier(h);
                     heeRepository.save(h);
 
                     if (nouveau) crees++; else misAJour++;

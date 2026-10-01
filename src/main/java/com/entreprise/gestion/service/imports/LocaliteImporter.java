@@ -16,6 +16,7 @@ import java.util.*;
 public class LocaliteImporter implements ImporteurExcel {
 
     private final LocaliteRepository localiteRepository;
+    private final VerificateurLongueurs verificateur;
 
     @Override public String cle() { return "localite"; }
 
@@ -44,13 +45,18 @@ public class LocaliteImporter implements ImporteurExcel {
 
         int crees = 0, misAJour = 0;
         for (var entree : dedupliques.entrySet()) {
-            Localite l = localiteRepository.findById(entree.getKey()).orElseGet(Localite::new);
-            boolean nouveau = (l.getCode() == null);
-            l.setCode(entree.getKey());
-            l.setNom(entree.getValue());
-            localiteRepository.save(l);
-            if (nouveau) crees++; else misAJour++;
+            try {
+                Localite l = localiteRepository.findById(entree.getKey()).orElseGet(Localite::new);
+                boolean nouveau = (l.getCode() == null);
+                l.setCode(entree.getKey());
+                l.setNom(entree.getValue());
+                verificateur.verifier(l);
+                localiteRepository.save(l);
+                if (nouveau) crees++; else misAJour++;
+            } catch (Exception e) {
+                erreurs.add("Localité « " + entree.getKey() + " » : " + e.getMessage());
+            }
         }
-        return new RapportImport(dedupliques.size(), crees, misAJour, erreurs);
+        return new RapportImport(crees + misAJour, crees, misAJour, erreurs);
     }
 }

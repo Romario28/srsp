@@ -55,7 +55,7 @@ public class BatchAnticipation {
     // par la fenêtre à deux bornes, via la même méthode contient() que le service API.
     private void traiter(Echeance e, LocalDate aujourdhui) {
         if (e.type() == TypeAnticipation.ANOMALIE) {
-            upsert(e, null);
+            upsertAnomalie(e);
             return;
         }
 
@@ -64,6 +64,14 @@ public class BatchAnticipation {
         if (!fenetre.contient(joursRestants)) return;                                          // MODIFIÉ
 
         upsert(e, e.dateEcheance());
+    }
+
+    private void upsertAnomalie(Echeance e) {
+        boolean dejaConnue = alerteRepository
+                .findByMatriculeAgentAndType(e.matricule(), TypeAnticipation.ANOMALIE).stream()
+                .anyMatch(a -> java.util.Objects.equals(a.getDetails(), e.details()));
+        if (dejaConnue) return;
+        enregistrer(e, null);
     }
     /**
      * Une alerte déjà acquittée pour cette échéance exacte n'est jamais
@@ -84,6 +92,10 @@ public class BatchAnticipation {
                         e.matricule(), e.type(), StatutAlerte.ACQUITTEE, dateEcheance);
         if (dejaAcquitteeIdentique) return;
 
+        enregistrer(e, dateEcheance);
+    }
+
+    private void enregistrer(Echeance e, LocalDate dateEcheance) {
         alerteRepository.save(Alerte.builder()
                 .matriculeAgent(e.matricule())
                 .nomCompletAgent(e.nomComplet())

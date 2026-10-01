@@ -25,4 +25,8 @@ public interface AlerteRepository extends JpaRepository<Alerte, Long> {
                             @Param("statut") StatutAlerte statut,
                             @Param("matricule") String matricule,
                             Pageable page);
+
+    // AJOUTÉ — toutes les alertes d'un agent pour un type, tous statuts confondus :
+// sert à dédupliquer les anomalies par raison.
+    List<Alerte> findByMatriculeAgentAndType(String matricule, TypeAnticipation type);
 }

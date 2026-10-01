@@ -20,6 +20,7 @@ import java.util.stream.Collectors;
 public class SoaImporter implements ImporteurExcel {
 
     private final SoaRepository soaRepository;
+    private final VerificateurLongueurs verificateur;
 
     @Override public String cle() { return "soa"; }
 
@@ -43,6 +44,7 @@ public class SoaImporter implements ImporteurExcel {
                     boolean nouveau = (s.getCode() == null);
                     s.setCode(code);
                     s.setLibelle(LectureExcel.texte(ligne, 1));
+                    verificateur.verifier(s);
                     soaRepository.save(s);
 
                     if (nouveau) crees++; else misAJour++;

@@ -21,6 +21,7 @@ import java.util.stream.Collectors;
 public class CorpsImporter implements ImporteurExcel {
 
     private final CorpsRepository corpsRepository;
+    private final VerificateurLongueurs verificateur;
 
     @Override public String cle() { return "corps"; }
 
@@ -37,6 +38,7 @@ public class CorpsImporter implements ImporteurExcel {
             Sheet feuille = wb.getSheetAt(0);
 
             Map<String, Integer> col = LectureExcel.indexerEntetes(feuille);
+            LectureExcel.exigerColonnes(col, "corps", "libelle", "categorie");
             int idxCorps     = LectureExcel.colonneObligatoire(col, "corps");
             int idxLibelle   = LectureExcel.colonneObligatoire(col, "libelle");
             int idxCategorie = LectureExcel.colonneObligatoire(col, "categorie");
@@ -60,6 +62,7 @@ public class CorpsImporter implements ImporteurExcel {
                     c.setCode(code);
                     c.setCategorie(categorie);
                     c.setLibelle(libelle);
+                    verificateur.verifier(c);
                     corpsRepository.save(c);
 
                     if (nouveau) crees++;

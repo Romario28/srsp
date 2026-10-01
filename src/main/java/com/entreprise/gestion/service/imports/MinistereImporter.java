@@ -16,6 +16,7 @@ import java.util.List;
 public class MinistereImporter implements ImporteurExcel {
 
     private final MinistereRepository ministereRepository;
+    private final VerificateurLongueurs verificateur;
 
     @Override public String cle() { return "ministere"; }
 
@@ -37,6 +38,7 @@ public class MinistereImporter implements ImporteurExcel {
                     boolean nouveau = (m.getCode() == null);
                     m.setCode(code);
                     m.setLibelle(LectureExcel.texte(ligne, 1));
+                    verificateur.verifier(m);
                     ministereRepository.save(m);
 
                     if (nouveau) crees++; else misAJour++;

@@ -17,6 +17,7 @@ import java.util.List;
 public class SanctionImporter implements ImporteurExcel {
 
     private final SanctionRepository sanctionRepository;
+    private final VerificateurLongueurs verificateur;
 
     @Override public String cle() { return "sanction"; }
 
@@ -38,6 +39,7 @@ public class SanctionImporter implements ImporteurExcel {
                     boolean nouveau = (s.getCode() == null);
                     s.setCode(code);
                     s.setLibelle(LectureExcel.texte(ligne, 1));
+                    verificateur.verifier(s);
                     sanctionRepository.save(s);
 
                     if (nouveau) crees++; else misAJour++;

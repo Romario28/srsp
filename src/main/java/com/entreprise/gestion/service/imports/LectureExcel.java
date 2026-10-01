@@ -1,7 +1,10 @@
 package com.entreprise.gestion.service.imports;
 
+import com.entreprise.gestion.exception.BusinessException;
 import org.apache.poi.ss.usermodel.*;
 import java.time.LocalDate;
+import java.util.Arrays;
+import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -34,6 +37,10 @@ public final class LectureExcel {
     
     public static Map<String, Integer> indexerEntetes(Sheet feuille) {
         Row entete = feuille.getRow(0);
+        if (entete == null) {
+            throw new BusinessException("FICHIER_SANS_ENTETES",
+                    "La première ligne de la première feuille est vide : elle doit contenir les en-têtes de colonnes.");
+        }
         Map<String, Integer> index = new HashMap<>();
         for (Cell cellule : entete) {
             index.put(cellule.getStringCellValue().trim().toUpperCase(), cellule.getColumnIndex());
@@ -41,10 +48,20 @@ public final class LectureExcel {
         return index;
     }
 
+    public static void exigerColonnes(Map<String, Integer> entetes, String... noms) {
+        List<String> manquantes = Arrays.stream(noms)
+                .filter(n -> !entetes.containsKey(n.toUpperCase()))
+                .toList();
+        if (manquantes.isEmpty()) return;
+        throw new BusinessException("COLONNES_ABSENTES",
+                (manquantes.size() == 1 ? "Colonne obligatoire absente du fichier : "
+                        : "Colonnes obligatoires absentes du fichier : ") + String.join(", ", manquantes));
+    }
+
     public static int colonneObligatoire(Map<String, Integer> entetes, String nom) {
         Integer idx = entetes.get(nom.toUpperCase());
         if (idx == null) {
-            throw new IllegalStateException("Colonne obligatoire absente du fichier : " + nom);
+            throw new BusinessException("COLONNE_ABSENTE", "Colonne obligatoire absente du fichier : " + nom);
         }
         return idx;
     }
