@@ -113,8 +113,8 @@ public class AgentImporter implements ImporteurExcel {
                     a.setSectionCode(LectureExcel.texte(ligne, idxSection));
                     a.setLocalite(resoudre(LectureExcel.texte(ligne, idxFiv), localiteParCode,
                             "fiv_code", nonResolus, exemplesNonResolus));
-                    a.setSanction(resoudre(LectureExcel.texte(ligne, idxSanction), sanctionParCode,
-                            "sanction_code", nonResolus, exemplesNonResolus));
+                    a.setSanction(resoudre(LectureExcel.normaliserCode(LectureExcel.texte(ligne, idxSanction)),
+                            sanctionParCode, "sanction_code", nonResolus, exemplesNonResolus));
                     a.setSoa(resoudre(LectureExcel.texte(ligne, idxSoa), soaParCode,
                             "soa", nonResolus, exemplesNonResolus));
 
@@ -124,8 +124,8 @@ public class AgentImporter implements ImporteurExcel {
 
                     a.setPosteNumero(LectureExcel.texte(ligne, idxPoste));
                     a.setRegCode(LectureExcel.texte(ligne, idxRegCode));
-                    a.setMinistere(resoudre(LectureExcel.texte(ligne, idxMinCode), ministereParCode,
-                            "min_code", nonResolus, exemplesNonResolus));
+                    a.setMinistere(resoudre(LectureExcel.normaliserCode(LectureExcel.texte(ligne, idxMinCode)),
+                            ministereParCode, "min_code", nonResolus, exemplesNonResolus));
 
                     agentRepository.save(a);
                     if (nouveau) crees++; else misAJour++;
