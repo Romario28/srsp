@@ -112,17 +112,11 @@ public class AnticipationService {
         return true;
     }
 
-    // versAlerte() et formatRetard() — INCHANGÉES
+    // versAlerte() — le libellé de retard est calculé par le front à partir de joursRestants.
     private EcheanceAnticipeeDTO versAlerte(Agent a, Echeance e) {
         long jours = e.dateEcheance() != null
                 ? ChronoUnit.DAYS.between(LocalDate.now(), e.dateEcheance())
                 : 0;
-
-        String details = e.details();
-        if (e.type() != TypeAnticipation.ANOMALIE && jours < 0) {
-            String retard = "Dépassé de " + formatRetard(-jours);
-            details = (details != null) ? details + " — " + retard : retard;
-        }
 
         return new EcheanceAnticipeeDTO(
                 a.getMatricule(),
@@ -130,7 +124,7 @@ public class AnticipationService {
                 e.type(),
                 e.dateEcheance(),
                 jours,
-                details,
+                e.details(),
                 a.getStatut(),
                 a.getDateNaissance(),
                 a.getAvanceDate(),
@@ -142,8 +136,4 @@ public class AnticipationService {
         );
     }
 
-    private String formatRetard(long jours) {
-        long mois = jours / 30;
-        return mois < 12 ? mois + " mois" : (mois / 12) + " an(s) et " + (mois % 12) + " mois";
-    }
 }

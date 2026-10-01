@@ -8,6 +8,7 @@ import com.entreprise.gestion.repository.referentiel.AgentRepository;
 import com.entreprise.gestion.repository.referentiel.CorpsRepository;
 import com.entreprise.gestion.repository.referentiel.GradeRepository;
 import com.entreprise.gestion.repository.referentiel.IndiceGrdCorpsRepository;
+import com.entreprise.gestion.repository.referentiel.SanctionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
@@ -18,11 +19,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-/**
- * Jeu d'amorçage référentiel RH + agents + alertes pour développer les écrans
- * d'anticipation sans réimporter à chaque redémarrage (H2 create-drop).
- * Actif uniquement en profil {@code local} ou {@code dev}.
- */
 @Component
 @Profile({"local", "dev"})
 @Order(2) // après DataInitializer (utilisateurs) pour pouvoir lier une alerte acquittée
@@ -32,6 +28,7 @@ public class AnticipationDevDataInitializer implements CommandLineRunner {
     private final GradeRepository gradeRepository;
     private final CorpsRepository corpsRepository;
     private final IndiceGrdCorpsRepository indiceGrdCorpsRepository;
+    private final SanctionRepository sanctionRepository;
     private final AgentRepository agentRepository;
     private final AlerteRepository alerteRepository;
     private final UtilisateurRepository utilisateurRepository;
@@ -58,6 +55,14 @@ public class AnticipationDevDataInitializer implements CommandLineRunner {
                 .grade(grade1A).corps(corpsAdm).indice("350").dureeRequise(2).build());
         indiceGrdCorpsRepository.save(IndiceGrdCorps.builder()
                 .grade(grade2A).corps(corpsTec).indice("400").dureeRequise(3).build());
+
+        Sanction enActivite = sanctionRepository.save(Sanction.builder().code("00").libelle("En activité").build());
+        Sanction horsActivite = sanctionRepository.save(Sanction.builder().code("21").libelle("Hors activité (exemple)").build());
+
+        Grade gradeMj = gradeRepository.save(Grade.builder().code("MJ00").libelle("Palier ELD (exemple)").build());
+        Corps corpsEld = corpsRepository.save(Corps.builder().code("4100").categorie("01").libelle("Corps ELD (exemple)").build());
+        indiceGrdCorpsRepository.save(IndiceGrdCorps.builder()
+                .grade(gradeMj).corps(corpsEld).indice("300").dureeRequise(2).build());
 
         LocalDate aujourdhui = LocalDate.now();
 
@@ -130,6 +135,39 @@ public class AnticipationDevDataInitializer implements CommandLineRunner {
                 .dateDebutContrat(aujourdhui.minusYears(15))
                 .build());
 
+        // Couverture des statuts, anomalies et filtre « en activité ».
+        agentRepository.save(Agent.builder()
+                .matricule("A00008").nom("Ranaivo").prenoms("Toky")
+                .dateNaissance(aujourdhui.minusYears(60).plusDays(400))
+                .statut(StatutAgent.ELD).grade(gradeMj).corps(corpsEld).sanction(enActivite)
+                .avanceDate(aujourdhui.minusYears(2).plusDays(20))
+                .dateDebutContrat(aujourdhui.minusYears(6)).dateFinContrat(aujourdhui.plusDays(70)).build());
+
+        agentRepository.save(Agent.builder()
+                .matricule("A00009").nom("Rabary").prenoms("Sitraka")
+                .dateNaissance(aujourdhui.minusYears(60).plusDays(200))
+                .grade(grade1A).corps(corpsAdm)
+                .avanceDate(aujourdhui.minusYears(2).plusDays(60))
+                .dateDebutContrat(aujourdhui.minusYears(12)).dateFinContrat(aujourdhui.minusDays(20)).build());
+
+        agentRepository.save(Agent.builder()
+                .matricule("A00010").nom("Rabemanana").prenoms("Lanto")
+                .dateNaissance(aujourdhui.minusYears(39)).statut(StatutAgent.FONCTIONNAIRE)
+                .grade(grade2A).corps(corpsAdm).avanceDate(aujourdhui.minusYears(1))
+                .dateDebutContrat(aujourdhui.minusYears(9)).build());
+
+        agentRepository.save(Agent.builder()
+                .matricule("A00011").nom("Randrianasolo").prenoms("Faly")
+                .statut(StatutAgent.CONTRACTUEL).grade(grade1A).corps(corpsAdm)
+                .avanceDate(aujourdhui.minusYears(1)).dateDebutContrat(aujourdhui.minusYears(3)).build());
+
+        agentRepository.save(Agent.builder()
+                .matricule("A00012").nom("Andrianjaka").prenoms("Ravo")
+                .dateNaissance(aujourdhui.minusYears(60).plusDays(30)).statut(StatutAgent.FONCTIONNAIRE)
+                .grade(grade1A).corps(corpsAdm).sanction(horsActivite)
+                .avanceDate(aujourdhui.minusYears(2).plusDays(10))
+                .dateDebutContrat(aujourdhui.minusYears(25)).build());
+
         Utilisateur admin = utilisateurRepository.findByEmail("admin@entreprise.mg").orElse(null);
 
         alerteRepository.save(Alerte.builder()
@@ -172,7 +210,6 @@ public class AnticipationDevDataInitializer implements CommandLineRunner {
                 .nomCompletAgent("Hery Ravelo")
                 .type(TypeAnticipation.FIN_CONTRAT)
                 .dateEcheance(finContratRetard.getDateFinContrat())
-                .details("Dépassé de 0 mois")
                 .statut(StatutAlerte.NOUVELLE)
                 .build());
 
@@ -184,6 +221,30 @@ public class AnticipationDevDataInitializer implements CommandLineRunner {
                 .details("Grade et corps manquants")
                 .statut(StatutAlerte.NOUVELLE)
                 .build());
+
+        alerteRepository.save(Alerte.builder().matriculeAgent("A00008").nomCompletAgent("Toky Ranaivo")
+                .type(TypeAnticipation.AVANCEMENT).dateEcheance(aujourdhui.plusDays(20))
+                .statut(StatutAlerte.NOUVELLE).build());
+        alerteRepository.save(Alerte.builder().matriculeAgent("A00009").nomCompletAgent("Sitraka Rabary")
+                .type(TypeAnticipation.FIN_CONTRAT).dateEcheance(aujourdhui.minusDays(20))
+                .statut(StatutAlerte.NOUVELLE).build());
+        alerteRepository.save(Alerte.builder().matriculeAgent("A00010").nomCompletAgent("Lanto Rabemanana")
+                .type(TypeAnticipation.ANOMALIE).dateEcheance(null)
+                .details("Durée requise non renseignée pour ADM/I/2A")
+                .statut(StatutAlerte.NOUVELLE).build());
+        alerteRepository.save(Alerte.builder().matriculeAgent("A00011").nomCompletAgent("Faly Randrianasolo")
+                .type(TypeAnticipation.ANOMALIE).dateEcheance(null)
+                .details("Date de naissance manquante")
+                .statut(StatutAlerte.NOUVELLE).build());
+
+        for (int i = 1; i <= 25; i++) {
+            alerteRepository.save(Alerte.builder()
+                    .matriculeAgent(String.format("T%05d", i))
+                    .nomCompletAgent("Agent test " + i)
+                    .type(TypeAnticipation.FIN_CONTRAT)
+                    .dateEcheance(aujourdhui.plusDays(i))
+                    .statut(StatutAlerte.NOUVELLE).build());
+        }
 
         if (admin != null) {
             alerteRepository.save(Alerte.builder()
@@ -201,7 +262,7 @@ public class AnticipationDevDataInitializer implements CommandLineRunner {
         System.out.println("""
 
             ╔═══════════════════════════════════════════════════════════════╗
-            ║   Anticipation DEV : 7 agents + référentiels + 7 alertes       ║
+            ║   Anticipation DEV : 12 agents + référentiels + 36 alertes    ║
             ║   Profils actifs : local / dev                                 ║
             ╚═══════════════════════════════════════════════════════════════╝
             """);

@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/alertes")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('ADMIN','EMPLOYE')")
+@PreAuthorize("hasRole('ADMIN')")
 public class AlerteController {
 
     private final AlerteService alerteService;

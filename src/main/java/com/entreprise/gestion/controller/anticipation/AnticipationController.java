@@ -13,13 +13,13 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/anticipation")
 @RequiredArgsConstructor
+@PreAuthorize("hasRole('ADMIN')")
 public class AnticipationController {
 
     private final AnticipationService anticipationService;
 
     // MODIFIÉ — ajout dateDebut/dateFin (format ISO attendu : yyyy-MM-dd, ex. ?dateDebut=2026-01-01)
     @GetMapping("/retraite")
-    @PreAuthorize("hasAnyRole('ADMIN','EMPLOYE')")
     public ResponseEntity<List<EcheanceAnticipeeDTO>> retraite(
             @RequestParam(required = false) Integer prevenanceJours,
             @RequestParam(required = false) Integer retardJours,
@@ -30,7 +30,6 @@ public class AnticipationController {
     }
 
     @GetMapping("/avancement")
-    @PreAuthorize("hasAnyRole('ADMIN','EMPLOYE')")
     public ResponseEntity<List<EcheanceAnticipeeDTO>> avancement(
             @RequestParam(required = false) Integer prevenanceJours,
             @RequestParam(required = false) Integer retardJours,
@@ -41,7 +40,6 @@ public class AnticipationController {
     }
 
     @GetMapping("/titularisation")
-    @PreAuthorize("hasAnyRole('ADMIN','EMPLOYE')")
     public ResponseEntity<List<EcheanceAnticipeeDTO>> titularisation(
             @RequestParam(required = false) Integer prevenanceJours,
             @RequestParam(required = false) Integer retardJours,
@@ -52,7 +50,6 @@ public class AnticipationController {
     }
 
     @GetMapping("/fin-contrat")
-    @PreAuthorize("hasAnyRole('ADMIN','EMPLOYE')")
     public ResponseEntity<List<EcheanceAnticipeeDTO>> finContrat(
             @RequestParam(required = false) Integer prevenanceJours,
             @RequestParam(required = false) Integer retardJours,
@@ -64,7 +61,6 @@ public class AnticipationController {
 
     // anomalies() — INCHANGÉE
     @GetMapping("/anomalies")
-    @PreAuthorize("hasAnyRole('ADMIN','EMPLOYE')")
     public ResponseEntity<List<EcheanceAnticipeeDTO>> anomalies(
             @RequestParam(required = false) StatutAgent statut) {
         return ResponseEntity.ok(anticipationService.anomalies(statut));
