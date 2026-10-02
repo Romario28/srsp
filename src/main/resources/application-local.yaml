@@ -1,5 +1,6 @@
 # Profil local (activé par défaut via spring.profiles.default dans application.yaml).
-# Déclenche AnticipationDevDataInitializer (agents + alertes d'exemple).
+# Aucune donnée d'exemple pour l'anticipation : la base démarre sans agent ni référentiel,
+# on les alimente par la page Imports.
 
 app:
   jwt:

@@ -23,6 +23,12 @@ public class AnticipationService {
     private final MoteurAnticipation moteur;
     private final ConfigurationDelaiService configurationDelaiService;
 
+    /** Nombre total d'agents importés, quel que soit leur statut administratif. */
+    @Transactional(readOnly = true)
+    public long compterAgents() {
+        return agentRepository.count();
+    }
+
     // MODIFIÉ — ajout dateDebut/dateFin (filtre absolu, prioritaire sur prevenanceJours/retardJours)
     @Transactional(readOnly = true)
     public List<EcheanceAnticipeeDTO> departsRetraite(Integer prevenanceJours, Integer retardJours,

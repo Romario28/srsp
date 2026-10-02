@@ -1,6 +1,7 @@
 package com.entreprise.gestion.controller.anticipation;
 
 import com.entreprise.gestion.entite.anticipation.StatutAgent;
+import com.entreprise.gestion.dto.anticipation.EtatBaseAgentsDTO;
 import com.entreprise.gestion.service.anticipation.EcheanceAnticipeeDTO;
 import com.entreprise.gestion.service.anticipation.AnticipationService;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +18,11 @@ import java.util.List;
 public class AnticipationController {
 
     private final AnticipationService anticipationService;
+
+    @GetMapping("/base")
+    public ResponseEntity<EtatBaseAgentsDTO> base() {
+        return ResponseEntity.ok(new EtatBaseAgentsDTO(anticipationService.compterAgents()));
+    }
 
     // MODIFIÉ — ajout dateDebut/dateFin (format ISO attendu : yyyy-MM-dd, ex. ?dateDebut=2026-01-01)
     @GetMapping("/retraite")
