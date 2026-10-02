@@ -6,6 +6,7 @@ import com.entreprise.gestion.repository.anticipation.AlerteRepository;
 import com.entreprise.gestion.repository.referentiel.AgentRepository;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +24,7 @@ import java.util.List;
  */
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class BatchAnticipation {
 
 
@@ -34,10 +36,12 @@ public class BatchAnticipation {
     private final ConfigurationDelaiService configurationDelaiService; // ← remplace ConfigurationDelaiRepository
     private final EntityManager entityManager;
 
-    @Scheduled(cron = "${anticipation.batch.cron:0 0 3 * * *}")
+    @Scheduled(cron = "${anticipation.batch.cron:0 */5 * * * *}")
     @Transactional
     public void executer() {
         LocalDate aujourdhui = LocalDate.now();
+        long debut = System.currentTimeMillis();
+        long alertesAvant = alerteRepository.count();
 
         int compteur = 0;
         for (Agent agent : agentRepository.findAllActifs()) {
@@ -49,6 +53,9 @@ public class BatchAnticipation {
                 entityManager.clear();
             }
         }
+
+        log.info("Batch anticipation : {} agent(s) traité(s), {} alerte(s) créée(s), {} ms",
+                compteur, alerteRepository.count() - alertesAvant, System.currentTimeMillis() - debut);
     }
 
     // MODIFIÉ — remplace le seuil unique "resoudreDelai(type):int" + "joursRestants > delai"
