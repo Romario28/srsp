@@ -36,7 +36,7 @@ public class BatchAnticipation {
     private final ConfigurationDelaiService configurationDelaiService; // ← remplace ConfigurationDelaiRepository
     private final EntityManager entityManager;
 
-    @Scheduled(cron = "${anticipation.batch.cron:0 */20 * * * *}")
+    @Scheduled(cron = "${anticipation.batch.cron:0 */10 * * * *}")
     @Transactional
     public void executer() {
         LocalDate aujourdhui = LocalDate.now();
@@ -72,7 +72,7 @@ public class BatchAnticipation {
         FenetreAnticipation fenetre = fenetres.get(e.type());
         if (!fenetre.contient(e.dateEcheance(), aujourdhui)) return;
 
-        upsert(e, e.dateEcheance());
+        upsert(e, e.dateEcheance(), fenetre.datePreparation(e.dateEcheance()));
     }
 
     private void upsertAnomalie(Echeance e) {
@@ -80,7 +80,7 @@ public class BatchAnticipation {
                 .findByMatriculeAgentAndType(e.matricule(), TypeAnticipation.ANOMALIE).stream()
                 .anyMatch(a -> java.util.Objects.equals(a.getDetails(), e.details()));
         if (dejaConnue) return;
-        enregistrer(e, null);
+        enregistrer(e, null, null);
     }
     /**
      * Une alerte déjà acquittée pour cette échéance exacte n'est jamais
@@ -88,7 +88,7 @@ public class BatchAnticipation {
      * (donnée source corrigée entre-temps), une NOUVELLE alerte apparaît —
      * l'ancienne reste en base, satisfaisant la traçabilité historique.
      */
-    private void upsert(Echeance e, LocalDate dateEcheance) {
+    private void upsert(Echeance e, LocalDate dateEcheance, LocalDate datePreparation) {
         List<Alerte> existantes = alerteRepository
                 .findByMatriculeAgentAndTypeAndStatutNot(e.matricule(), e.type(), StatutAlerte.ACQUITTEE);
 
@@ -101,15 +101,16 @@ public class BatchAnticipation {
                         e.matricule(), e.type(), StatutAlerte.ACQUITTEE, dateEcheance);
         if (dejaAcquitteeIdentique) return;
 
-        enregistrer(e, dateEcheance);
+        enregistrer(e, dateEcheance, datePreparation);
     }
 
-    private void enregistrer(Echeance e, LocalDate dateEcheance) {
+    private void enregistrer(Echeance e, LocalDate dateEcheance, LocalDate datePreparation) {
         alerteRepository.save(Alerte.builder()
                 .matriculeAgent(e.matricule())
                 .nomCompletAgent(e.nomComplet())
                 .type(e.type())
                 .dateEcheance(dateEcheance)
+                .datePreparation(datePreparation)
                 .details(e.details())
                 .statut(StatutAlerte.NOUVELLE)
                 .build());

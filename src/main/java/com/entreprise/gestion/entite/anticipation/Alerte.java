@@ -31,6 +31,9 @@ public class Alerte {
     @Column(name = "date_echeance")
     private LocalDate dateEcheance;   // null pour une ANOMALIE
 
+    @Column(name = "date_preparation")
+    private LocalDate datePreparation;
+
     @Column(name = "details", length = 500)
     private String details;
 

@@ -9,6 +9,7 @@ public record EcheanceAnticipeeDTO(
         String nomComplet,
         TypeAnticipation type,
         LocalDate dateEcheance,
+        LocalDate datePreparation,
         long joursRestants,
         String details,
         StatutAgent statut,

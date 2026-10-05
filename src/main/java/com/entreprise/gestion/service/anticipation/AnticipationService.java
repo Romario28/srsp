@@ -31,26 +31,30 @@ public class AnticipationService {
 
     @Transactional(readOnly = true)
     public List<EcheanceAnticipeeDTO> departsRetraite(Integer prevenanceMois, Integer retardMois,
-                                                      LocalDate dateDebut, LocalDate dateFin, StatutAgent statut) {
-        return calculerParType(TypeAnticipation.DEPART_RETRAITE, prevenanceMois, retardMois, dateDebut, dateFin, statut);
+                                                      LocalDate dateDebut, LocalDate dateFin, CritereDate critereDate,
+                                                      StatutAgent statut) {
+        return calculerParType(TypeAnticipation.DEPART_RETRAITE, prevenanceMois, retardMois, dateDebut, dateFin, critereDate, statut);
     }
 
     @Transactional(readOnly = true)
     public List<EcheanceAnticipeeDTO> avancementsDus(Integer prevenanceMois, Integer retardMois,
-                                                     LocalDate dateDebut, LocalDate dateFin, StatutAgent statut) {
-        return calculerParType(TypeAnticipation.AVANCEMENT, prevenanceMois, retardMois, dateDebut, dateFin, statut);
+                                                     LocalDate dateDebut, LocalDate dateFin, CritereDate critereDate,
+                                                     StatutAgent statut) {
+        return calculerParType(TypeAnticipation.AVANCEMENT, prevenanceMois, retardMois, dateDebut, dateFin, critereDate, statut);
     }
 
     @Transactional(readOnly = true)
     public List<EcheanceAnticipeeDTO> titularisationsDues(Integer prevenanceMois, Integer retardMois,
-                                                          LocalDate dateDebut, LocalDate dateFin, StatutAgent statut) {
-        return calculerParType(TypeAnticipation.TITULARISATION, prevenanceMois, retardMois, dateDebut, dateFin, statut);
+                                                          LocalDate dateDebut, LocalDate dateFin, CritereDate critereDate,
+                                                          StatutAgent statut) {
+        return calculerParType(TypeAnticipation.TITULARISATION, prevenanceMois, retardMois, dateDebut, dateFin, critereDate, statut);
     }
 
     @Transactional(readOnly = true)
     public List<EcheanceAnticipeeDTO> finsContrat(Integer prevenanceMois, Integer retardMois,
-                                                  LocalDate dateDebut, LocalDate dateFin, StatutAgent statut) {
-        return calculerParType(TypeAnticipation.FIN_CONTRAT, prevenanceMois, retardMois, dateDebut, dateFin, statut);
+                                                  LocalDate dateDebut, LocalDate dateFin, CritereDate critereDate,
+                                                  StatutAgent statut) {
+        return calculerParType(TypeAnticipation.FIN_CONTRAT, prevenanceMois, retardMois, dateDebut, dateFin, critereDate, statut);
     }
 
     // anomalies() — INCHANGÉE : pas de dateEcheance à filtrer (voir note en fin de réponse)
@@ -60,22 +64,18 @@ public class AnticipationService {
                 .filter(a -> statut == null || a.getStatut() == statut)
                 .flatMap(a -> moteur.calculerEcheances(a).stream()
                         .filter(e -> e.type() == TypeAnticipation.ANOMALIE)
-                        .map(e -> versAlerte(a, e)))
+                        .map(e -> versAlerte(a, e, null)))
                 .collect(Collectors.toList());
     }
 
     /**
-     * prevenanceMois/retardMois null → fenêtre résolue depuis la configuration
-     * (DB active sinon défaut) ; non-null → surcharge ponctuelle en mois calendaires.
-
-     * dateDebut/dateFin (l'un des deux suffit) : filtre par intervalle de dates
-     * ABSOLUES sur dateEcheance. PRIORITAIRE — s'il est actif, prevenanceMois/
-     * retardMois et la configuration en base sont entièrement ignorés (même la
-     * résolution de la fenêtre est court-circuitée, pas seulement son usage).
+     * Sans intervalle absolu, seuls les agents dont la fenêtre [préparation ; échéance + tolérance]
+     * contient aujourd'hui sont retenus. Avec dateDebut/dateFin, le critère choisi filtre l'échéance
+     * ou sa date de préparation ; le délai de préparation reste résolu pour calculer celle-ci.
      */
-    // MODIFIÉ — signature + corps : ajout dateDebut/dateFin, branchement filtre absolu vs fenêtre relative
-    private List<EcheanceAnticipeeDTO> calculerParType(TypeAnticipation type, Integer prevenanceMois, Integer retardMois,
-                                                       LocalDate dateDebut, LocalDate dateFin, StatutAgent statut) {
+    private List<EcheanceAnticipeeDTO> calculerParType(TypeAnticipation type, Integer prevenanceMois,
+                                                       Integer retardMois, LocalDate dateDebut, LocalDate dateFin,
+                                                       CritereDate critereDate, StatutAgent statut) {
 
         // AJOUTÉ — même validation que PorteeDelegueeService.accorder (code DATES_INVALIDES réutilisé)
         if (dateDebut != null && dateFin != null && dateFin.isBefore(dateDebut)) {
@@ -83,28 +83,23 @@ public class AnticipationService {
         }
 
         boolean filtreDatesActif = (dateDebut != null || dateFin != null);   // AJOUTÉ
+        CritereDate critere = critereDate != null ? critereDate : CritereDate.ECHEANCE;
         LocalDate aujourdhui = LocalDate.now();
 
-        // AJOUTÉ — la fenêtre relative n'est résolue (donc aucune requête ConfigurationDelai)
-        // que si le filtre par dates absolues n'est pas actif.
-        FenetreAnticipation fenetre = null;
-        if (!filtreDatesActif) {
-            FenetreAnticipation resolue = configurationDelaiService.resoudreFenetre(type);
-            fenetre = new FenetreAnticipation(
-                    prevenanceMois != null ? prevenanceMois : resolue.prevenanceMois(),
-                    retardMois != null ? retardMois : resolue.retardMois());
-            FenetreAnticipation.verifier(fenetre.prevenanceMois(), fenetre.retardMois());
-        }
-        final FenetreAnticipation fenetreFinale = fenetre;
+        FenetreAnticipation resolue = configurationDelaiService.resoudreFenetre(type);
+        FenetreAnticipation fenetre = new FenetreAnticipation(
+                prevenanceMois != null ? prevenanceMois : resolue.prevenanceMois(),
+                retardMois != null ? retardMois : resolue.retardMois());
 
         return agentRepository.findAllActifs().stream()
                 .filter(a -> statut == null || a.getStatut() == statut)
                 .flatMap(a -> moteur.calculerEcheances(a).stream()
                         .filter(e -> e.type() == type)
-                        .map(e -> versAlerte(a, e)))
+                        .map(e -> versAlerte(a, e, fenetre)))
                 .filter(al -> filtreDatesActif
-                        ? dansIntervalle(al.dateEcheance(), dateDebut, dateFin)
-                        : fenetreFinale.contient(al.dateEcheance(), aujourdhui))
+                        ? dansIntervalle(critere == CritereDate.PREPARATION
+                                ? al.datePreparation() : al.dateEcheance(), dateDebut, dateFin)
+                        : fenetre.contient(al.dateEcheance(), aujourdhui))
                 .sorted(Comparator.comparingLong(EcheanceAnticipeeDTO::joursRestants))
                 .collect(Collectors.toList());
     }
@@ -118,8 +113,7 @@ public class AnticipationService {
         return true;
     }
 
-    // versAlerte() — le libellé de retard est calculé par le front à partir de joursRestants.
-    private EcheanceAnticipeeDTO versAlerte(Agent a, Echeance e) {
+    private EcheanceAnticipeeDTO versAlerte(Agent a, Echeance e, FenetreAnticipation fenetre) {
         long jours = e.dateEcheance() != null
                 ? ChronoUnit.DAYS.between(LocalDate.now(), e.dateEcheance())
                 : 0;
@@ -129,6 +123,7 @@ public class AnticipationService {
                 a.getPrenoms() + " " + a.getNom(),
                 e.type(),
                 e.dateEcheance(),
+                fenetre != null ? fenetre.datePreparation(e.dateEcheance()) : null,
                 jours,
                 e.details(),
                 a.getStatut(),

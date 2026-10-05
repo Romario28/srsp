@@ -4,7 +4,10 @@ import com.entreprise.gestion.exception.BusinessException;
 
 import java.time.LocalDate;
 
-/** Fenêtre de visibilité d'une anticipation en mois calendaires autour de l'échéance. */
+/**
+ * prevenanceMois est le délai de préparation avant l'échéance ; retardMois est la tolérance après.
+ * La fenêtre de visibilité est [date de préparation ; fin de tolérance].
+ */
 public record FenetreAnticipation(int prevenanceMois, int retardMois) {
 
     /** Plafond de 3 ans afin de borner les calculs calendaires. */
@@ -14,18 +17,18 @@ public record FenetreAnticipation(int prevenanceMois, int retardMois) {
         verifier(prevenanceMois, retardMois);
     }
 
-    public LocalDate borneHaute(LocalDate aujourdhui) {
-        return aujourdhui.plusMonths(prevenanceMois);
+    public LocalDate datePreparation(LocalDate echeance) {
+        return echeance == null ? null : echeance.minusMonths(prevenanceMois);
     }
 
-    public LocalDate borneBasse(LocalDate aujourdhui) {
-        return aujourdhui.minusMonths(retardMois);
+    public LocalDate dateFinTolerance(LocalDate echeance) {
+        return echeance == null ? null : echeance.plusMonths(retardMois);
     }
 
     public boolean contient(LocalDate echeance, LocalDate aujourdhui) {
         if (echeance == null) return false;
-        return !echeance.isAfter(borneHaute(aujourdhui))
-                && !echeance.isBefore(borneBasse(aujourdhui));
+        return !aujourdhui.isBefore(datePreparation(echeance))
+                && !aujourdhui.isAfter(dateFinTolerance(echeance));
     }
 
     public static void verifier(int prevenanceMois, int retardMois) {

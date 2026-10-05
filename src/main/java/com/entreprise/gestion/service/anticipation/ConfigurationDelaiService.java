@@ -56,7 +56,7 @@ public class ConfigurationDelaiService {
         config.setActif(true);
         ConfigurationDelai saved = configurationDelaiRepository.save(config);
         auditService.logAvecEntite(actor.getUtilisateur(), "UPDATE_CONFIG_DELAI",
-                "Fenêtre « " + libelle(type) + " » : prévenance " + avant.prevenanceMois() + " → " + prevenanceMois
+                "Fenêtre « " + libelle(type) + " » : préparation " + avant.prevenanceMois() + " → " + prevenanceMois
                         + " mois, retard " + avant.retardMois() + " → " + retardMois + " mois", null);
         return saved;
     }
@@ -70,7 +70,7 @@ public class ConfigurationDelaiService {
             int retard = c.getDelaiRetardMois();
             configurationDelaiRepository.delete(c);
             auditService.logAvecEntite(actor.getUtilisateur(), "RESET_CONFIG_DELAI",
-                    "Fenêtre « " + libelle(type) + " » : personnalisation retirée (prévenance "
+                    "Fenêtre « " + libelle(type) + " » : personnalisation retirée (préparation "
                             + prevenance + " mois, retard " + retard + " mois), retour au défaut ("
                             + defaut.prevenanceMois() + " mois / " + defaut.retardMois() + " mois)", null);
         });

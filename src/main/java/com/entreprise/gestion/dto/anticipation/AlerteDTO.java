@@ -22,6 +22,7 @@ public class AlerteDTO {
     private String nomCompletAgent;
     private TypeAnticipation type;
     private LocalDate dateEcheance;
+    private LocalDate datePreparation;
     private String details;
     private StatutAlerte statut;
     private LocalDateTime dateDetection;
@@ -37,6 +38,7 @@ public class AlerteDTO {
                 .nomCompletAgent(a.getNomCompletAgent())
                 .type(a.getType())
                 .dateEcheance(a.getDateEcheance())
+                .datePreparation(a.getDatePreparation())
                 .details(a.getDetails())
                 .statut(a.getStatut())
                 .dateDetection(a.getDateDetection())
