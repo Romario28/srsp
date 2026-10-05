@@ -53,6 +53,7 @@ public class BatchAnticipation {
             if (++compteur % TAILLE_LOT == 0) {
                 entityManager.flush();
                 entityManager.clear();
+
             }
         }
 
