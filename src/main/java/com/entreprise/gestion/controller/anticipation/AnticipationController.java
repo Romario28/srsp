@@ -64,8 +64,6 @@ public class AnticipationController {
             @RequestParam(required = false) StatutAgent statut) {
         return ResponseEntity.ok(anticipationService.finsContrat(prevenanceJours, retardJours, dateDebut, dateFin, statut));
     }
-
-    // anomalies() — INCHANGÉE
     @GetMapping("/anomalies")
     public ResponseEntity<List<EcheanceAnticipeeDTO>> anomalies(
             @RequestParam(required = false) StatutAgent statut) {

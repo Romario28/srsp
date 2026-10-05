@@ -39,9 +39,6 @@ public class Agent {
     @Column(name = "statut", length = 20)
     private StatutAgent statut;
 
-
-    
-
  /*   @ManyToOne @JoinColumn(name = "corps_code")
     private Corps corps;
 

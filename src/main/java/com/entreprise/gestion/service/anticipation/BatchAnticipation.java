@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Processus quotidien qui satisfait l'exigence "recalcul automatique" :
@@ -36,17 +37,18 @@ public class BatchAnticipation {
     private final ConfigurationDelaiService configurationDelaiService; // ← remplace ConfigurationDelaiRepository
     private final EntityManager entityManager;
 
-    @Scheduled(cron = "${anticipation.batch.cron:0 */5 * * * *}")
+    @Scheduled(cron = "${anticipation.batch.cron:0 */20 * * * *}")
     @Transactional
     public void executer() {
         LocalDate aujourdhui = LocalDate.now();
+        Map<TypeAnticipation, FenetreAnticipation> fenetres = configurationDelaiService.resoudreToutes();
         long debut = System.currentTimeMillis();
         long alertesAvant = alerteRepository.count();
 
         int compteur = 0;
         for (Agent agent : agentRepository.findAllActifs()) {
             for (Echeance e : moteur.calculerEcheances(agent)) {
-                traiter(e, aujourdhui);
+                traiter(e, aujourdhui, fenetres);
             }
             if (++compteur % TAILLE_LOT == 0) {
                 entityManager.flush();
@@ -60,13 +62,14 @@ public class BatchAnticipation {
 
     // MODIFIÉ — remplace le seuil unique "resoudreDelai(type):int" + "joursRestants > delai"
     // par la fenêtre à deux bornes, via la même méthode contient() que le service API.
-    private void traiter(Echeance e, LocalDate aujourdhui) {
+    private void traiter(Echeance e, LocalDate aujourdhui,
+                         Map<TypeAnticipation, FenetreAnticipation> fenetres) {
         if (e.type() == TypeAnticipation.ANOMALIE) {
             upsertAnomalie(e);
             return;
         }
 
-        FenetreAnticipation fenetre = configurationDelaiService.resoudreFenetre(e.type());   // MODIFIÉ
+        FenetreAnticipation fenetre = fenetres.get(e.type());
         long joursRestants = ChronoUnit.DAYS.between(aujourdhui, e.dateEcheance());
         if (!fenetre.contient(joursRestants)) return;                                          // MODIFIÉ
 
