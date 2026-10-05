@@ -134,15 +134,6 @@ public class DataInitializer implements CommandLineRunner {
                 .utilisateur(uJean).departement(drh).typeAcces(TypeAcces.LECTURE)
                 .dateDebut(LocalDate.now()).dateFin(LocalDate.now().plusMonths(1)).accordePar(uVoahangy).build());
 
-//                ConfigurationDelai.builder().type(TypeAnticipation.DEPART_RETRAITE)
-//                        .delaiPrevenanceJours(548).retardJours(365).build(),
-//                ConfigurationDelai.builder().type(TypeAnticipation.AVANCEMENT)
-//                        .delaiPrevenanceJours(90).retardJours(365).build(),
-//                ConfigurationDelai.builder().type(TypeAnticipation.TITULARISATION)
-//                        .delaiPrevenanceJours(90).retardJours(365).build(),
-//                ConfigurationDelai.builder().type(TypeAnticipation.FIN_CONTRAT)
-//                        .delaiPrevenanceJours(90).retardJours(30).build()
-//        ));
         System.out.println("""
 
             ╔═══════════════════════════════════════════════════════════════╗

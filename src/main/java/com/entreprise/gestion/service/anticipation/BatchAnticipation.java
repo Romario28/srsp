@@ -11,7 +11,6 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 
@@ -71,8 +70,7 @@ public class BatchAnticipation {
         }
 
         FenetreAnticipation fenetre = fenetres.get(e.type());
-        long joursRestants = ChronoUnit.DAYS.between(aujourdhui, e.dateEcheance());
-        if (!fenetre.contient(joursRestants)) return;                                          // MODIFIÉ
+        if (!fenetre.contient(e.dateEcheance(), aujourdhui)) return;
 
         upsert(e, e.dateEcheance());
     }

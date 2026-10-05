@@ -1,17 +1,38 @@
 package com.entreprise.gestion.service.anticipation;
 
-// NOUVEAU FICHIER — encapsule les deux bornes (prévenance / retard) et la règle
-// de visibilité, réutilisée à l'identique par le batch nocturne et les endpoints API.
-/**
- * Fenêtre de visibilité d'une anticipation, en jours autour de l'échéance.
- *  - prevenanceJours (borne haute) : visible dès que joursRestants <= prevenanceJours.
- *  - retardJours (borne basse)     : visible tant que joursRestants >= -retardJours.
- *                                     0 = aucun retard toléré.
- * joursRestants garde son signe usuel : positif = à venir, négatif = dépassé.
- */
-public record FenetreAnticipation(int prevenanceJours, int retardJours) {
+import com.entreprise.gestion.exception.BusinessException;
 
-    public boolean contient(long joursRestants) {
-        return joursRestants <= prevenanceJours && joursRestants >= -retardJours;
+import java.time.LocalDate;
+
+/** Fenêtre de visibilité d'une anticipation en mois calendaires autour de l'échéance. */
+public record FenetreAnticipation(int prevenanceMois, int retardMois) {
+
+    /** Plafond de 3 ans afin de borner les calculs calendaires. */
+    public static final int MAX_MOIS = 36;
+
+    public FenetreAnticipation {
+        verifier(prevenanceMois, retardMois);
+    }
+
+    public LocalDate borneHaute(LocalDate aujourdhui) {
+        return aujourdhui.plusMonths(prevenanceMois);
+    }
+
+    public LocalDate borneBasse(LocalDate aujourdhui) {
+        return aujourdhui.minusMonths(retardMois);
+    }
+
+    public boolean contient(LocalDate echeance, LocalDate aujourdhui) {
+        if (echeance == null) return false;
+        return !echeance.isAfter(borneHaute(aujourdhui))
+                && !echeance.isBefore(borneBasse(aujourdhui));
+    }
+
+    public static void verifier(int prevenanceMois, int retardMois) {
+        if (prevenanceMois < 0 || retardMois < 0
+                || prevenanceMois > MAX_MOIS || retardMois > MAX_MOIS) {
+            throw new BusinessException("DELAI_INVALIDE",
+                    "Les délais doivent être compris entre 0 et " + MAX_MOIS + " mois.");
+        }
     }
 }

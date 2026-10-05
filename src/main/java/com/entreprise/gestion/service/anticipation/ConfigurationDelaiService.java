@@ -27,7 +27,7 @@ public class ConfigurationDelaiService {
     public FenetreAnticipation resoudreFenetre(TypeAnticipation type) {
         return configurationDelaiRepository.findById(type)
                 .filter(ConfigurationDelai::isActif)
-                .map(c -> new FenetreAnticipation(c.getDelaiPrevenanceJours(), c.getDelaiRetardJours())) // MODIFIÉ
+                .map(c -> new FenetreAnticipation(c.getDelaiPrevenanceMois(), c.getDelaiRetardMois()))
                 .orElseGet(() -> DelaisParDefaut.pour(type));
     }
 
@@ -39,28 +39,25 @@ public class ConfigurationDelaiService {
                 .collect(Collectors.toMap(t -> t, this::resoudreFenetre));
     }
 
-    // MODIFIÉ — signature : definir(type, int delaiJours) → definir(type, int prevenanceJours, int retardJours)
     /** Crée ou met à jour la fenêtre pour un type. */
     @Transactional
-    public ConfigurationDelai definir(TypeAnticipation type, int prevenanceJours, int retardJours, UserDetailsImpl actor) {
+    public ConfigurationDelai definir(TypeAnticipation type, int prevenanceMois, int retardMois, UserDetailsImpl actor) {
         if (type == TypeAnticipation.ANOMALIE) {
             throw new BusinessException("TYPE_SANS_DELAI",
                     "Les anomalies n'ont pas de fenêtre configurable : elles sont toujours remontées.");
         }
-        if (prevenanceJours < 0 || retardJours < 0) {   // MODIFIÉ — valide les deux bornes
-            throw new BusinessException("DELAI_INVALIDE", "Les délais doivent être positifs ou nuls.");
-        }
+        FenetreAnticipation.verifier(prevenanceMois, retardMois);
 
         FenetreAnticipation avant = resoudreFenetre(type);
         ConfigurationDelai config = configurationDelaiRepository.findById(type)
                 .orElse(ConfigurationDelai.builder().type(type).build());
-        config.setDelaiPrevenanceJours(prevenanceJours);
-        config.setDelaiRetardJours(retardJours);   // AJOUTÉ
+        config.setDelaiPrevenanceMois(prevenanceMois);
+        config.setDelaiRetardMois(retardMois);
         config.setActif(true);
         ConfigurationDelai saved = configurationDelaiRepository.save(config);
         auditService.logAvecEntite(actor.getUtilisateur(), "UPDATE_CONFIG_DELAI",
-                "Fenêtre « " + libelle(type) + " » : prévenance " + avant.prevenanceJours() + " → " + prevenanceJours
-                        + " j, retard " + avant.retardJours() + " → " + retardJours + " j", null);
+                "Fenêtre « " + libelle(type) + " » : prévenance " + avant.prevenanceMois() + " → " + prevenanceMois
+                        + " mois, retard " + avant.retardMois() + " → " + retardMois + " mois", null);
         return saved;
     }
 
@@ -69,13 +66,13 @@ public class ConfigurationDelaiService {
     public void reinitialiser(TypeAnticipation type, UserDetailsImpl actor) {
         configurationDelaiRepository.findById(type).ifPresent(c -> {
             FenetreAnticipation defaut = DelaisParDefaut.pour(type);
-            int prevenance = c.getDelaiPrevenanceJours();
-            int retard = c.getDelaiRetardJours();
+            int prevenance = c.getDelaiPrevenanceMois();
+            int retard = c.getDelaiRetardMois();
             configurationDelaiRepository.delete(c);
             auditService.logAvecEntite(actor.getUtilisateur(), "RESET_CONFIG_DELAI",
                     "Fenêtre « " + libelle(type) + " » : personnalisation retirée (prévenance "
-                            + prevenance + " j, retard " + retard + " j), retour au défaut ("
-                            + defaut.prevenanceJours() + " j / " + defaut.retardJours() + " j)", null);
+                            + prevenance + " mois, retard " + retard + " mois), retour au défaut ("
+                            + defaut.prevenanceMois() + " mois / " + defaut.retardMois() + " mois)", null);
         });
     }
 

@@ -5,8 +5,7 @@ import java.util.Map;
 
 /**
  * Fenêtres par défaut codées en dur — utilisées tant qu'aucune ConfigurationDelai
- * active n'existe en base. Les bornes de retard ci-dessous sont des valeurs de
- * démarrage à valider avec le métier.
+ * active n'existe en base. Les valeurs sont exprimées en mois calendaires.
  */
 // MODIFIÉ — javadoc : un seul délai devient une fenêtre à deux bornes
 public final class DelaisParDefaut {
@@ -15,10 +14,10 @@ public final class DelaisParDefaut {
     // avant : TypeAnticipation.DEPART_RETRAITE, 548
     // après : un couple (prévenance, retard) par type
     private static final Map<TypeAnticipation, FenetreAnticipation> VALEURS = Map.of(
-            TypeAnticipation.DEPART_RETRAITE, new FenetreAnticipation(548, 30),
-            TypeAnticipation.AVANCEMENT,      new FenetreAnticipation(90, 30),
-            TypeAnticipation.TITULARISATION,  new FenetreAnticipation(90, 30),
-            TypeAnticipation.FIN_CONTRAT,     new FenetreAnticipation(90, 30)
+            TypeAnticipation.DEPART_RETRAITE, new FenetreAnticipation(18, 6),
+            TypeAnticipation.AVANCEMENT,      new FenetreAnticipation(3, 1),
+            TypeAnticipation.TITULARISATION,  new FenetreAnticipation(3, 1),
+            TypeAnticipation.FIN_CONTRAT,     new FenetreAnticipation(3, 1)
             // ANOMALIE : pas de fenêtre — toujours remontée, voir AnticipationService.anomalies()
     );
 

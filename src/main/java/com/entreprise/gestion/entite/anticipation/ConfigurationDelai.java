@@ -13,13 +13,13 @@ public class ConfigurationDelai {
     @Column(name = "type_anticipation", length = 30)
     private TypeAnticipation type;
 
-    @Column(name = "delai_prevenance_jours", nullable = false)
-    private Integer delaiPrevenanceJours;
+    @Column(name = "delai_prevenance_mois", nullable = false)
+    private Integer delaiPrevenanceMois;
 
     // AJOUTÉ — borne de retard. Colonne NOT NULL sur table pouvant déjà contenir
     // des lignes : migration DB nécessaire en profil prod (ALTER TABLE ... ADD COLUMN ... DEFAULT).
-    @Column(name = "delai_retard_jours", nullable = false)
-    private Integer delaiRetardJours;
+    @Column(name = "delai_retard_mois", nullable = false)
+    private Integer delaiRetardMois;
 
     @Column(name = "actif", nullable = false)
     @Builder.Default

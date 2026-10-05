@@ -38,8 +38,8 @@ public class ConfigurationDelaiController {
                     FenetreAnticipation effectif = effectives.get(t);        // MODIFIÉ
                     // MODIFIÉ — DTO alimenté avec les 2 bornes au lieu d'une seule
                     return new ConfigurationDelaiDTO(
-                            t, effectif.prevenanceJours(), effectif.retardJours(),
-                            defaut.prevenanceJours(), defaut.retardJours(),
+                            t, effectif.prevenanceMois(), effectif.retardMois(),
+                            defaut.prevenanceMois(), defaut.retardMois(),
                             !effectif.equals(defaut));
                 })
                 .collect(Collectors.toList());
@@ -53,11 +53,11 @@ public class ConfigurationDelaiController {
             @PathVariable TypeAnticipation type,
             @Valid @RequestBody DefinirDelaiRequest req,
             @AuthenticationPrincipal UserDetailsImpl principal) {
-        configurationDelaiService.definir(type, req.getPrevenanceJours(), req.getRetardJours(), principal);
+        configurationDelaiService.definir(type, req.getPrevenanceMois(), req.getRetardMois(), principal);
         FenetreAnticipation defaut = DelaisParDefaut.pour(type);   // MODIFIÉ
         return ResponseEntity.ok(new ConfigurationDelaiDTO(
-                type, req.getPrevenanceJours(), req.getRetardJours(),
-                defaut.prevenanceJours(), defaut.retardJours(), true));
+                type, req.getPrevenanceMois(), req.getRetardMois(),
+                defaut.prevenanceMois(), defaut.retardMois(), true));
     }
 
     // reinitialiser() — inchangée

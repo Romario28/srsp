@@ -8,10 +8,9 @@ import lombok.Data;
 @AllArgsConstructor
 public class ConfigurationDelaiDTO {
     private TypeAnticipation type;
-    // MODIFIÉ — "delaiPrevenanceJours"/"delaiParDefaut" (1 borne) → 2 champs par borne
-    private int prevenanceJours;        // valeur EFFECTIVE
-    private int retardJours;            // AJOUTÉ
-    private int prevenanceJoursDefaut;
-    private int retardJoursDefaut;      // AJOUTÉ
+    private int prevenanceMois;
+    private int retardMois;
+    private int prevenanceMoisDefaut;
+    private int retardMoisDefaut;
     private boolean personnalise;
 }

@@ -27,42 +27,42 @@ public class AnticipationController {
     // MODIFIÉ — ajout dateDebut/dateFin (format ISO attendu : yyyy-MM-dd, ex. ?dateDebut=2026-01-01)
     @GetMapping("/retraite")
     public ResponseEntity<List<EcheanceAnticipeeDTO>> retraite(
-            @RequestParam(required = false) Integer prevenanceJours,
-            @RequestParam(required = false) Integer retardJours,
+            @RequestParam(required = false) Integer prevenanceMois,
+            @RequestParam(required = false) Integer retardMois,
             @RequestParam(required = false) LocalDate dateDebut,
             @RequestParam(required = false) LocalDate dateFin,
             @RequestParam(required = false) StatutAgent statut) {
-        return ResponseEntity.ok(anticipationService.departsRetraite(prevenanceJours, retardJours, dateDebut, dateFin, statut));
+        return ResponseEntity.ok(anticipationService.departsRetraite(prevenanceMois, retardMois, dateDebut, dateFin, statut));
     }
 
     @GetMapping("/avancement")
     public ResponseEntity<List<EcheanceAnticipeeDTO>> avancement(
-            @RequestParam(required = false) Integer prevenanceJours,
-            @RequestParam(required = false) Integer retardJours,
+            @RequestParam(required = false) Integer prevenanceMois,
+            @RequestParam(required = false) Integer retardMois,
             @RequestParam(required = false) LocalDate dateDebut,
             @RequestParam(required = false) LocalDate dateFin,
             @RequestParam(required = false) StatutAgent statut) {
-        return ResponseEntity.ok(anticipationService.avancementsDus(prevenanceJours, retardJours, dateDebut, dateFin, statut));
+        return ResponseEntity.ok(anticipationService.avancementsDus(prevenanceMois, retardMois, dateDebut, dateFin, statut));
     }
 
     @GetMapping("/titularisation")
     public ResponseEntity<List<EcheanceAnticipeeDTO>> titularisation(
-            @RequestParam(required = false) Integer prevenanceJours,
-            @RequestParam(required = false) Integer retardJours,
+            @RequestParam(required = false) Integer prevenanceMois,
+            @RequestParam(required = false) Integer retardMois,
             @RequestParam(required = false) LocalDate dateDebut,
             @RequestParam(required = false) LocalDate dateFin,
             @RequestParam(required = false) StatutAgent statut) {
-        return ResponseEntity.ok(anticipationService.titularisationsDues(prevenanceJours, retardJours, dateDebut, dateFin, statut));
+        return ResponseEntity.ok(anticipationService.titularisationsDues(prevenanceMois, retardMois, dateDebut, dateFin, statut));
     }
 
     @GetMapping("/fin-contrat")
     public ResponseEntity<List<EcheanceAnticipeeDTO>> finContrat(
-            @RequestParam(required = false) Integer prevenanceJours,
-            @RequestParam(required = false) Integer retardJours,
+            @RequestParam(required = false) Integer prevenanceMois,
+            @RequestParam(required = false) Integer retardMois,
             @RequestParam(required = false) LocalDate dateDebut,
             @RequestParam(required = false) LocalDate dateFin,
             @RequestParam(required = false) StatutAgent statut) {
-        return ResponseEntity.ok(anticipationService.finsContrat(prevenanceJours, retardJours, dateDebut, dateFin, statut));
+        return ResponseEntity.ok(anticipationService.finsContrat(prevenanceMois, retardMois, dateDebut, dateFin, statut));
     }
     @GetMapping("/anomalies")
     public ResponseEntity<List<EcheanceAnticipeeDTO>> anomalies(
