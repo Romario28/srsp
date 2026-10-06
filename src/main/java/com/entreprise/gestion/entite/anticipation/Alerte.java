@@ -34,6 +34,7 @@ public class Alerte {
     @Column(name = "date_preparation")
     private LocalDate datePreparation;
 
+
     @Column(name = "details", length = 500)
     private String details;
 

@@ -92,9 +92,18 @@ public class BatchAnticipation {
         List<Alerte> existantes = alerteRepository
                 .findByMatriculeAgentAndTypeAndStatutNot(e.matricule(), e.type(), StatutAlerte.ACQUITTEE);
 
-        boolean dejaPresente = existantes.stream()
-                .anyMatch(a -> java.util.Objects.equals(a.getDateEcheance(), dateEcheance));
-        if (dejaPresente) return;
+        Alerte presente = existantes.stream()
+                .filter(a -> java.util.Objects.equals(a.getDateEcheance(), dateEcheance))
+                .findFirst()
+                .orElse(null);
+
+        if (presente != null) {
+            if (presente.getDatePreparation() == null && datePreparation != null) {
+                presente.setDatePreparation(datePreparation);
+                alerteRepository.save(presente);
+            }
+            return;
+        }
 
         boolean dejaAcquitteeIdentique = alerteRepository
                 .existsByMatriculeAgentAndTypeAndStatutAndDateEcheance(
