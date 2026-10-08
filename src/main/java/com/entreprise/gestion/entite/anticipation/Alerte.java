@@ -41,6 +41,12 @@ public class Alerte {
     @Column(name = "grade_suivant", length = 200)
     private String gradeSuivant;
 
+    @Column(name = "grade_actuel", length = 10)
+    private String gradeActuel;
+
+    @Column(name = "date_effet_actuelle")
+    private LocalDate dateEffetActuelle;
+
 
     @Column(name = "details", length = 500)
     private String details;

@@ -31,8 +31,8 @@ spring:
     cache-names: visibilityScope
   servlet:
     multipart:
-      max-file-size: 50MB   # ou 20MB si votre fichier est plus petit
-    max-request-size: 50MB
+      max-file-size: 100MB
+      max-request-size: 120MB
 
 anticipation:
   # MC1E est un ancien nom de ST0E pour le grade suivant uniquement. Le type d'échéance

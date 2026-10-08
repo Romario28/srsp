@@ -27,6 +27,7 @@ import java.util.Map;
 @Slf4j
 public class BatchAnticipation {
 
+    private record SituationActuelle(String grade, LocalDate dateEffet) {}
 
     private static final int TAILLE_LOT = 500;
 
@@ -74,10 +75,19 @@ public class BatchAnticipation {
         FenetreAnticipation fenetre = fenetres.get(e.type());
         if (!fenetre.contient(e.dateEcheance(), aujourdhui)) return;
 
-        GradeSuivant gradeSuivant = e.type() == TypeAnticipation.AVANCEMENT
-                || e.type() == TypeAnticipation.TITULARISATION
-                ? calculerGradeSuivant(agent, grades) : null;
-        upsert(e, e.dateEcheance(), fenetre.datePreparation(e.dateEcheance()), gradeSuivant);
+        boolean changeDeGrade = e.type() == TypeAnticipation.AVANCEMENT
+                || e.type() == TypeAnticipation.TITULARISATION;
+        GradeSuivant gradeSuivant = changeDeGrade ? calculerGradeSuivant(agent, grades) : null;
+        SituationActuelle situation = changeDeGrade ? situationActuelle(agent) : null;
+        upsert(e, e.dateEcheance(), fenetre.datePreparation(e.dateEcheance()), gradeSuivant, situation);
+    }
+
+    /** Dernier grade et date d'ancrage retenus au moment de la détection. */
+    private SituationActuelle situationActuelle(Agent agent) {
+        LocalDate dateEffet = agent.getAvanceDate() != null
+                ? agent.getAvanceDate() : agent.getDateDebutContrat();
+        String grade = agent.getGrade() != null ? agent.getGrade().getCode() : null;
+        return new SituationActuelle(grade, dateEffet);
     }
 
     private GradeSuivant calculerGradeSuivant(Agent agent, GradesParCorps grades) {
@@ -90,7 +100,7 @@ public class BatchAnticipation {
                 .findByMatriculeAgentAndType(e.matricule(), TypeAnticipation.ANOMALIE).stream()
                 .anyMatch(a -> java.util.Objects.equals(a.getDetails(), e.details()));
         if (dejaConnue) return;
-        enregistrer(e, null, null, null);
+        enregistrer(e, null, null, null, null);
     }
     /**
      * Une alerte déjà acquittée pour cette échéance exacte n'est jamais
@@ -98,7 +108,8 @@ public class BatchAnticipation {
      * (donnée source corrigée entre-temps), une NOUVELLE alerte apparaît —
      * l'ancienne reste en base, satisfaisant la traçabilité historique.
      */
-    private void upsert(Echeance e, LocalDate dateEcheance, LocalDate datePreparation, GradeSuivant gradeSuivant) {
+    private void upsert(Echeance e, LocalDate dateEcheance, LocalDate datePreparation,
+                        GradeSuivant gradeSuivant, SituationActuelle situation) {
         List<Alerte> existantes = alerteRepository
                 .findByMatriculeAgentAndTypeAndStatutNot(e.matricule(), e.type(), StatutAlerte.ACQUITTEE);
 
@@ -119,6 +130,11 @@ public class BatchAnticipation {
                 presente.setGradeSuivant(gradeSuivant.valeurStockee());
                 modifiee = true;
             }
+            if (presente.getGradeActuel() == null && situation != null && situation.grade() != null) {
+                presente.setGradeActuel(situation.grade());
+                presente.setDateEffetActuelle(situation.dateEffet());
+                modifiee = true;
+            }
             if (modifiee) {
                 alerteRepository.save(presente);
             }
@@ -130,11 +146,11 @@ public class BatchAnticipation {
                         e.matricule(), e.type(), StatutAlerte.ACQUITTEE, dateEcheance);
         if (dejaAcquitteeIdentique) return;
 
-        enregistrer(e, dateEcheance, datePreparation, gradeSuivant);
+        enregistrer(e, dateEcheance, datePreparation, gradeSuivant, situation);
     }
 
     private void enregistrer(Echeance e, LocalDate dateEcheance, LocalDate datePreparation,
-                             GradeSuivant gradeSuivant) {
+                             GradeSuivant gradeSuivant, SituationActuelle situation) {
         alerteRepository.save(Alerte.builder()
                 .matriculeAgent(e.matricule())
                 .nomCompletAgent(e.nomComplet())
@@ -143,6 +159,8 @@ public class BatchAnticipation {
                 .datePreparation(datePreparation)
                 .gradeSuivantCas(gradeSuivant != null ? gradeSuivant.cas() : null)
                 .gradeSuivant(gradeSuivant != null ? gradeSuivant.valeurStockee() : null)
+                .gradeActuel(situation != null ? situation.grade() : null)
+                .dateEffetActuelle(situation != null ? situation.dateEffet() : null)
                 .details(e.details())
                 .statut(StatutAlerte.NOUVELLE)
                 .build());

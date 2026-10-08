@@ -25,6 +25,8 @@ public class AlerteDTO {
     private LocalDate dateEcheance;
     private LocalDate datePreparation;
     private GradeSuivant gradeSuivant;
+    private String gradeActuel;
+    private LocalDate dateEffetActuelle;
     private String details;
     private StatutAlerte statut;
     private LocalDateTime dateDetection;
@@ -42,6 +44,8 @@ public class AlerteDTO {
                 .dateEcheance(a.getDateEcheance())
                 .datePreparation(a.getDatePreparation())
                 .gradeSuivant(GradeSuivant.depuisStockage(a.getGradeSuivantCas(), a.getGradeSuivant()))
+                .gradeActuel(a.getGradeActuel())
+                .dateEffetActuelle(a.getDateEffetActuelle())
                 .details(a.getDetails())
                 .statut(a.getStatut())
                 .dateDetection(a.getDateDetection())
