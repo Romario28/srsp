@@ -22,6 +22,7 @@ public class AnticipationService {
     private final AgentRepository agentRepository;
     private final MoteurAnticipation moteur;
     private final ConfigurationDelaiService configurationDelaiService;
+    private final GradeSuivantService gradeSuivantService;
 
     /** Nombre total d'agents importés, quel que soit leur statut administratif. */
     @Transactional(readOnly = true)
@@ -64,7 +65,7 @@ public class AnticipationService {
                 .filter(a -> statut == null || a.getStatut() == statut)
                 .flatMap(a -> moteur.calculerEcheances(a).stream()
                         .filter(e -> e.type() == TypeAnticipation.ANOMALIE)
-                        .map(e -> versAlerte(a, e, null)))
+                        .map(e -> versAlerte(a, e, null, null)))
                 .collect(Collectors.toList());
     }
 
@@ -90,12 +91,14 @@ public class AnticipationService {
         FenetreAnticipation fenetre = new FenetreAnticipation(
                 prevenanceMois != null ? prevenanceMois : resolue.prevenanceMois(),
                 retardMois != null ? retardMois : resolue.retardMois());
+        GradesParCorps grades = type == TypeAnticipation.AVANCEMENT || type == TypeAnticipation.TITULARISATION
+                ? gradeSuivantService.indexer() : null;
 
         return agentRepository.findAllActifs().stream()
                 .filter(a -> statut == null || a.getStatut() == statut)
                 .flatMap(a -> moteur.calculerEcheances(a).stream()
                         .filter(e -> e.type() == type)
-                        .map(e -> versAlerte(a, e, fenetre)))
+                        .map(e -> versAlerte(a, e, fenetre, grades)))
                 .filter(al -> filtreDatesActif
                         ? dansIntervalle(critere == CritereDate.PREPARATION
                                 ? al.datePreparation() : al.dateEcheance(), dateDebut, dateFin)
@@ -113,7 +116,8 @@ public class AnticipationService {
         return true;
     }
 
-    private EcheanceAnticipeeDTO versAlerte(Agent a, Echeance e, FenetreAnticipation fenetre) {
+    private EcheanceAnticipeeDTO versAlerte(Agent a, Echeance e, FenetreAnticipation fenetre,
+                                             GradesParCorps grades) {
         long jours = e.dateEcheance() != null
                 ? ChronoUnit.DAYS.between(LocalDate.now(), e.dateEcheance())
                 : 0;
@@ -124,6 +128,9 @@ public class AnticipationService {
                 e.type(),
                 e.dateEcheance(),
                 fenetre != null ? fenetre.datePreparation(e.dateEcheance()) : null,
+                grades != null && a.getCorps() != null && a.getGrade() != null
+                        ? grades.pour(a.getCorps().getCode(), a.getCorps().getCategorie(), a.getGrade().getCode())
+                        : (grades != null ? GradeSuivant.INDETERMINE : null),
                 jours,
                 e.details(),
                 a.getStatut(),

@@ -14,9 +14,9 @@ public final class DelaisParDefaut {
     // avant : TypeAnticipation.DEPART_RETRAITE, 548
     // après : un couple (prévenance, retard) par type
     private static final Map<TypeAnticipation, FenetreAnticipation> VALEURS = Map.of(
-            TypeAnticipation.DEPART_RETRAITE, new FenetreAnticipation(12, 6),
-            TypeAnticipation.AVANCEMENT,      new FenetreAnticipation(3, 1),
-            TypeAnticipation.TITULARISATION,  new FenetreAnticipation(3, 1),
+            TypeAnticipation.DEPART_RETRAITE, new FenetreAnticipation(12, 0),
+            TypeAnticipation.AVANCEMENT,      new FenetreAnticipation(6, 0),
+            TypeAnticipation.TITULARISATION,  new FenetreAnticipation(3, 0),
             TypeAnticipation.FIN_CONTRAT,     new FenetreAnticipation(3, 1)
             // ANOMALIE : pas de fenêtre — toujours remontée, voir AnticipationService.anomalies()
     );

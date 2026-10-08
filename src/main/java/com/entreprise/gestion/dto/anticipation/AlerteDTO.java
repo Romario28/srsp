@@ -3,6 +3,7 @@ package com.entreprise.gestion.dto.anticipation;
 import com.entreprise.gestion.entite.anticipation.Alerte;
 import com.entreprise.gestion.entite.anticipation.StatutAlerte;
 import com.entreprise.gestion.entite.anticipation.TypeAnticipation;
+import com.entreprise.gestion.service.anticipation.GradeSuivant;
 import lombok.Builder;
 import lombok.Data;
 
@@ -23,6 +24,7 @@ public class AlerteDTO {
     private TypeAnticipation type;
     private LocalDate dateEcheance;
     private LocalDate datePreparation;
+    private GradeSuivant gradeSuivant;
     private String details;
     private StatutAlerte statut;
     private LocalDateTime dateDetection;
@@ -39,6 +41,7 @@ public class AlerteDTO {
                 .type(a.getType())
                 .dateEcheance(a.getDateEcheance())
                 .datePreparation(a.getDatePreparation())
+                .gradeSuivant(GradeSuivant.depuisStockage(a.getGradeSuivantCas(), a.getGradeSuivant()))
                 .details(a.getDetails())
                 .statut(a.getStatut())
                 .dateDetection(a.getDateDetection())

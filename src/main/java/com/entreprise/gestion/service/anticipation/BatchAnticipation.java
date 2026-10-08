@@ -34,6 +34,7 @@ public class BatchAnticipation {
     private final MoteurAnticipation moteur;
     private final AlerteRepository alerteRepository;
     private final ConfigurationDelaiService configurationDelaiService; // ← remplace ConfigurationDelaiRepository
+    private final GradeSuivantService gradeSuivantService;
     private final EntityManager entityManager;
 
     @Scheduled(cron = "${anticipation.batch.cron:0 */10 * * * *}")
@@ -41,13 +42,14 @@ public class BatchAnticipation {
     public void executer() {
         LocalDate aujourdhui = LocalDate.now();
         Map<TypeAnticipation, FenetreAnticipation> fenetres = configurationDelaiService.resoudreToutes();
+        GradesParCorps grades = gradeSuivantService.indexer();
         long debut = System.currentTimeMillis();
         long alertesAvant = alerteRepository.count();
 
         int compteur = 0;
         for (Agent agent : agentRepository.findAllActifs()) {
             for (Echeance e : moteur.calculerEcheances(agent)) {
-                traiter(e, aujourdhui, fenetres);
+                traiter(agent, e, aujourdhui, fenetres, grades);
             }
             if (++compteur % TAILLE_LOT == 0) {
                 entityManager.flush();
@@ -62,8 +64,8 @@ public class BatchAnticipation {
 
     // MODIFIÉ — remplace le seuil unique "resoudreDelai(type):int" + "joursRestants > delai"
     // par la fenêtre à deux bornes, via la même méthode contient() que le service API.
-    private void traiter(Echeance e, LocalDate aujourdhui,
-                         Map<TypeAnticipation, FenetreAnticipation> fenetres) {
+    private void traiter(Agent agent, Echeance e, LocalDate aujourdhui,
+                         Map<TypeAnticipation, FenetreAnticipation> fenetres, GradesParCorps grades) {
         if (e.type() == TypeAnticipation.ANOMALIE) {
             upsertAnomalie(e);
             return;
@@ -72,7 +74,15 @@ public class BatchAnticipation {
         FenetreAnticipation fenetre = fenetres.get(e.type());
         if (!fenetre.contient(e.dateEcheance(), aujourdhui)) return;
 
-        upsert(e, e.dateEcheance(), fenetre.datePreparation(e.dateEcheance()));
+        GradeSuivant gradeSuivant = e.type() == TypeAnticipation.AVANCEMENT
+                || e.type() == TypeAnticipation.TITULARISATION
+                ? calculerGradeSuivant(agent, grades) : null;
+        upsert(e, e.dateEcheance(), fenetre.datePreparation(e.dateEcheance()), gradeSuivant);
+    }
+
+    private GradeSuivant calculerGradeSuivant(Agent agent, GradesParCorps grades) {
+        if (agent.getGrade() == null || agent.getCorps() == null) return GradeSuivant.INDETERMINE;
+        return grades.pour(agent.getCorps().getCode(), agent.getCorps().getCategorie(), agent.getGrade().getCode());
     }
 
     private void upsertAnomalie(Echeance e) {
@@ -80,7 +90,7 @@ public class BatchAnticipation {
                 .findByMatriculeAgentAndType(e.matricule(), TypeAnticipation.ANOMALIE).stream()
                 .anyMatch(a -> java.util.Objects.equals(a.getDetails(), e.details()));
         if (dejaConnue) return;
-        enregistrer(e, null, null);
+        enregistrer(e, null, null, null);
     }
     /**
      * Une alerte déjà acquittée pour cette échéance exacte n'est jamais
@@ -88,7 +98,7 @@ public class BatchAnticipation {
      * (donnée source corrigée entre-temps), une NOUVELLE alerte apparaît —
      * l'ancienne reste en base, satisfaisant la traçabilité historique.
      */
-    private void upsert(Echeance e, LocalDate dateEcheance, LocalDate datePreparation) {
+    private void upsert(Echeance e, LocalDate dateEcheance, LocalDate datePreparation, GradeSuivant gradeSuivant) {
         List<Alerte> existantes = alerteRepository
                 .findByMatriculeAgentAndTypeAndStatutNot(e.matricule(), e.type(), StatutAlerte.ACQUITTEE);
 
@@ -98,8 +108,18 @@ public class BatchAnticipation {
                 .orElse(null);
 
         if (presente != null) {
+            boolean modifiee = false;
             if (presente.getDatePreparation() == null && datePreparation != null) {
                 presente.setDatePreparation(datePreparation);
+                modifiee = true;
+            }
+            if ((presente.getGradeSuivantCas() == null || presente.getGradeSuivant() == null)
+                    && gradeSuivant != null) {
+                presente.setGradeSuivantCas(gradeSuivant.cas());
+                presente.setGradeSuivant(gradeSuivant.valeurStockee());
+                modifiee = true;
+            }
+            if (modifiee) {
                 alerteRepository.save(presente);
             }
             return;
@@ -110,16 +130,19 @@ public class BatchAnticipation {
                         e.matricule(), e.type(), StatutAlerte.ACQUITTEE, dateEcheance);
         if (dejaAcquitteeIdentique) return;
 
-        enregistrer(e, dateEcheance, datePreparation);
+        enregistrer(e, dateEcheance, datePreparation, gradeSuivant);
     }
 
-    private void enregistrer(Echeance e, LocalDate dateEcheance, LocalDate datePreparation) {
+    private void enregistrer(Echeance e, LocalDate dateEcheance, LocalDate datePreparation,
+                             GradeSuivant gradeSuivant) {
         alerteRepository.save(Alerte.builder()
                 .matriculeAgent(e.matricule())
                 .nomCompletAgent(e.nomComplet())
                 .type(e.type())
                 .dateEcheance(dateEcheance)
                 .datePreparation(datePreparation)
+                .gradeSuivantCas(gradeSuivant != null ? gradeSuivant.cas() : null)
+                .gradeSuivant(gradeSuivant != null ? gradeSuivant.valeurStockee() : null)
                 .details(e.details())
                 .statut(StatutAlerte.NOUVELLE)
                 .build());

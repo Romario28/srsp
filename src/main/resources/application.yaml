@@ -32,7 +32,26 @@ spring:
   servlet:
     multipart:
       max-file-size: 50MB   # ou 20MB si votre fichier est plus petit
-      max-request-size: 50MB
+    max-request-size: 50MB
+
+anticipation:
+  # MC1E est un ancien nom de ST0E pour le grade suivant uniquement. Le type d'échéance
+  # suit le grade enregistré : MC1E reste en AVANCEMENT. Ne pas l'ajouter à grades-stagiaire.
+  grades-stagiaire: ST0E
+  # Renommages applicables dans tous les corps.
+  correspondance-grades:
+    "MC1E": "ST0E"
+    "MC2E": "2C1E"
+    "MC3E": "2C2E"
+    "EX0E": "EX1E"
+  # Ces exceptions s'appliquent à toutes les catégories de ces corps seulement.
+  correspondance-grades-par-corps:
+    "A88L":
+      "1C4E": "PR1E"
+    "J88L":
+      "1C4E": "PR1E"
+    "U88L":
+      "1C4E": "PR1E"
 
 server:
   port: 8080

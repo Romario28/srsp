@@ -10,14 +10,15 @@ public record EcheanceAnticipeeDTO(
         TypeAnticipation type,
         LocalDate dateEcheance,
         LocalDate datePreparation,
+        GradeSuivant gradeSuivant,
         long joursRestants,
         String details,
         StatutAgent statut,
         LocalDate dateNaissance,      // vérification DEPART_RETRAITE
-        LocalDate avanceDate,         // vérification AVANCEMENT (standard/ELD)
+        LocalDate avanceDate,         //dernier situation
         LocalDate dateDebutContrat,   // vérification TITULARISATION (stagiaire)
         LocalDate dateFinContrat,     // vérification FIN_CONTRAT
         String corpsCode,
-        String gradeCode,
+        String gradeCode,  //dernier situation
         String categorieCode
 ) {}

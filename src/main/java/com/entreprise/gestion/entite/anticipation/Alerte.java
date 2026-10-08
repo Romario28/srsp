@@ -34,6 +34,13 @@ public class Alerte {
     @Column(name = "date_preparation")
     private LocalDate datePreparation;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "grade_suivant_cas", length = 20)
+    private CasGradeSuivant gradeSuivantCas;
+
+    @Column(name = "grade_suivant", length = 200)
+    private String gradeSuivant;
+
 
     @Column(name = "details", length = 500)
     private String details;
