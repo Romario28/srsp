@@ -2,6 +2,7 @@ package com.entreprise.gestion.controller.anticipation;
 
 import com.entreprise.gestion.entite.anticipation.StatutAgent;
 import com.entreprise.gestion.dto.anticipation.EtatBaseAgentsDTO;
+import com.entreprise.gestion.dto.anticipation.AgentFicheDTO;
 import com.entreprise.gestion.service.anticipation.EcheanceAnticipeeDTO;
 import com.entreprise.gestion.service.anticipation.AnticipationService;
 import com.entreprise.gestion.service.anticipation.CritereDate;
@@ -23,6 +24,11 @@ public class AnticipationController {
     @GetMapping("/base")
     public ResponseEntity<EtatBaseAgentsDTO> base() {
         return ResponseEntity.ok(new EtatBaseAgentsDTO(anticipationService.compterAgents()));
+    }
+
+    @GetMapping("/agents/{matricule}")
+    public ResponseEntity<AgentFicheDTO> fiche(@PathVariable String matricule) {
+        return ResponseEntity.ok(anticipationService.fiche(matricule));
     }
 
     // MODIFIÉ — ajout dateDebut/dateFin (format ISO attendu : yyyy-MM-dd, ex. ?dateDebut=2026-01-01)

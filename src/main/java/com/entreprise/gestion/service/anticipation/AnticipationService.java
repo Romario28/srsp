@@ -3,6 +3,7 @@ package com.entreprise.gestion.service.anticipation;
 import com.entreprise.gestion.entite.anticipation.Agent;
 import com.entreprise.gestion.entite.anticipation.StatutAgent;
 import com.entreprise.gestion.entite.anticipation.TypeAnticipation;
+import com.entreprise.gestion.dto.anticipation.AgentFicheDTO;
 import com.entreprise.gestion.exception.BusinessException; // AJOUTÉ
 import com.entreprise.gestion.repository.referentiel.AgentRepository;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +29,13 @@ public class AnticipationService {
     @Transactional(readOnly = true)
     public long compterAgents() {
         return agentRepository.count();
+    }
+
+    @Transactional(readOnly = true)
+    public AgentFicheDTO fiche(String matricule) {
+        Agent agent = agentRepository.findById(matricule)
+                .orElseThrow(() -> new BusinessException("AGENT_INTROUVABLE", "Agent introuvable : " + matricule));
+        return AgentFicheDTO.from(agent);
     }
 
     @Transactional(readOnly = true)
