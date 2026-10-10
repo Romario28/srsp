@@ -3,8 +3,11 @@ package com.entreprise.gestion.controller.anticipation;
 import com.entreprise.gestion.entite.anticipation.StatutAgent;
 import com.entreprise.gestion.dto.anticipation.EtatBaseAgentsDTO;
 import com.entreprise.gestion.dto.anticipation.AgentFicheDTO;
+import com.entreprise.gestion.dto.anticipation.CalendrierAgentDTO;
+import com.entreprise.gestion.dto.anticipation.CalendrierJourDTO;
 import com.entreprise.gestion.service.anticipation.EcheanceAnticipeeDTO;
 import com.entreprise.gestion.service.anticipation.AnticipationService;
+import com.entreprise.gestion.service.anticipation.CalendrierService;
 import com.entreprise.gestion.service.anticipation.CritereDate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -20,6 +23,7 @@ import java.util.List;
 public class AnticipationController {
 
     private final AnticipationService anticipationService;
+    private final CalendrierService calendrierService;
 
     @GetMapping("/base")
     public ResponseEntity<EtatBaseAgentsDTO> base() {
@@ -29,6 +33,18 @@ public class AnticipationController {
     @GetMapping("/agents/{matricule}")
     public ResponseEntity<AgentFicheDTO> fiche(@PathVariable String matricule) {
         return ResponseEntity.ok(anticipationService.fiche(matricule));
+    }
+
+    @GetMapping("/calendrier")
+    public ResponseEntity<List<CalendrierJourDTO>> calendrier(@RequestParam int annee) {
+        return ResponseEntity.ok(calendrierService.annee(annee));
+    }
+
+    @GetMapping("/calendrier/agents")
+    public ResponseEntity<List<CalendrierAgentDTO>> calendrierAgents(
+            @RequestParam LocalDate date,
+            @RequestParam(required = false) CritereDate critereDate) {
+        return ResponseEntity.ok(calendrierService.agents(date, critereDate));
     }
 
     // MODIFIÉ — ajout dateDebut/dateFin (format ISO attendu : yyyy-MM-dd, ex. ?dateDebut=2026-01-01)
