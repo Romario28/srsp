@@ -1,10 +1,7 @@
 package com.entreprise.gestion.dto.anticipation;
 
 import com.entreprise.gestion.entite.anticipation.CategorieCalendrier;
-import com.entreprise.gestion.entite.anticipation.StatutAgent;
+import com.entreprise.gestion.service.anticipation.EcheanceAnticipeeDTO;
 
-import java.time.LocalDate;
-
-/** Agent concerné par une échéance à une date donnée du calendrier. */
-public record CalendrierAgentDTO(String matricule, String nomComplet, CategorieCalendrier categorie,
-                                StatutAgent statut, LocalDate datePreparation, LocalDate dateEcheance) {}
+/** Un agent concerne ce jour-la : sa categorie d'affichage et la ligne complete des ecrans d'echeances. */
+public record CalendrierAgentDTO(CategorieCalendrier categorie, EcheanceAnticipeeDTO echeance) {}

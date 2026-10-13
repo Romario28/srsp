@@ -28,12 +28,15 @@ public class CalendrierService {
     private final AgentRepository agentRepository;
     private final MoteurAnticipation moteur;
     private final ConfigurationDelaiService configurationDelaiService;
+    private final GradeSuivantService gradeSuivantService;
 
-    private record Placee(Agent agent, CategorieCalendrier categorie,
-                          LocalDate datePreparation, LocalDate dateEcheance) {}
+    private record Placee(Agent agent, Echeance echeance, CategorieCalendrier categorie, FenetreAnticipation fenetre) {
+        LocalDate datePreparation() { return fenetre.datePreparation(echeance.dateEcheance()); }
+        LocalDate dateEcheance() { return echeance.dateEcheance(); }
+    }
+
     private record Cle(LocalDate datePreparation, LocalDate dateEcheance, CategorieCalendrier categorie) {}
 
-    /** Toutes les échéances liées à l'année, avec leurs deux dates, en un parcours des agents actifs. */
     @Transactional(readOnly = true)
     public List<CalendrierJourDTO> annee(int annee) {
         if (annee < ANNEE_MIN || annee > ANNEE_MAX) {
@@ -53,27 +56,30 @@ public class CalendrierService {
                 .toList();
     }
 
-    /** Détail à la demande d'une journée selon la date choisie par le client. */
     @Transactional(readOnly = true)
     public List<CalendrierAgentDTO> agents(LocalDate jour, CritereDate critere) {
         boolean surPreparation = (critere != null ? critere : CritereDate.PREPARATION) == CritereDate.PREPARATION;
+        GradesParCorps grades = gradeSuivantService.indexer();
+
         return placees()
                 .filter(p -> jour.equals(surPreparation ? p.datePreparation() : p.dateEcheance()))
-                .map(p -> new CalendrierAgentDTO(
-                        p.agent().getMatricule(), p.agent().getPrenoms() + " " + p.agent().getNom(),
-                        p.categorie(), p.agent().getStatut(), p.datePreparation(), p.dateEcheance()))
+                .map(p -> new CalendrierAgentDTO(p.categorie(), EcheanceAnticipeeDTO.de(
+                        p.agent(), p.echeance(), p.fenetre(), changeDeGrade(p.echeance().type()) ? grades : null)))
                 .sorted(Comparator.comparing(CalendrierAgentDTO::categorie)
-                        .thenComparing(CalendrierAgentDTO::nomComplet))
+                        .thenComparing(d -> d.echeance().nomComplet()))
                 .toList();
     }
 
-    /** Échéances datées des agents actifs, sans appliquer la fenêtre de visibilité des alertes. */
+    private static boolean changeDeGrade(TypeAnticipation type) {
+        return type == TypeAnticipation.AVANCEMENT || type == TypeAnticipation.TITULARISATION;
+    }
+
     private Stream<Placee> placees() {
         Map<TypeAnticipation, FenetreAnticipation> fenetres = configurationDelaiService.resoudreToutes();
         return agentRepository.findAllActifs().stream()
                 .flatMap(a -> moteur.calculerEcheances(a).stream()
                         .filter(e -> e.type() != TypeAnticipation.ANOMALIE && e.dateEcheance() != null)
-                        .map(e -> new Placee(a, CategorieCalendrier.de(e.type(), a.getStatut()),
-                                fenetres.get(e.type()).datePreparation(e.dateEcheance()), e.dateEcheance())));
+                        .map(e -> new Placee(a, e, CategorieCalendrier.de(e.type(), a.getStatut()),
+                                fenetres.get(e.type()))));
     }
 }

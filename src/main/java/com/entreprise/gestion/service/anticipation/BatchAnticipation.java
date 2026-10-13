@@ -38,7 +38,7 @@ public class BatchAnticipation {
     private final GradeSuivantService gradeSuivantService;
     private final EntityManager entityManager;
 
-    @Scheduled(cron = "${anticipation.batch.cron:0 */10 * * * *}")
+    @Scheduled(cron = "${anticipation.batch.cron:0 */60 * * * *}")
     @Transactional
     public void executer() {
         LocalDate aujourdhui = LocalDate.now();
