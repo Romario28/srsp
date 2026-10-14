@@ -12,9 +12,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -34,15 +36,16 @@ public class CalendrierService {
         LocalDate datePreparation() { return fenetre.datePreparation(echeance.dateEcheance()); }
         LocalDate dateEcheance() { return echeance.dateEcheance(); }
     }
-
     private record Cle(LocalDate datePreparation, LocalDate dateEcheance, CategorieCalendrier categorie) {}
 
+    /**
+     * Une année du calendrier, en un seul parcours des agents : toutes les échéances dont la date de
+     * préparation OU la date d'échéance tombe dans l'année, avec les deux dates. Le choix de la date
+     * affichée se fait côté client, sans nouvel appel.
+     */
     @Transactional(readOnly = true)
     public List<CalendrierJourDTO> annee(int annee) {
-        if (annee < ANNEE_MIN || annee > ANNEE_MAX) {
-            throw new BusinessException("ANNEE_INVALIDE",
-                    "L'année doit être comprise entre " + ANNEE_MIN + " et " + ANNEE_MAX + ".");
-        }
+        verifierAnnee(annee);
         return placees()
                 .filter(p -> p.datePreparation().getYear() == annee || p.dateEcheance().getYear() == annee)
                 .collect(Collectors.groupingBy(
@@ -56,24 +59,58 @@ public class CalendrierService {
                 .toList();
     }
 
+    /** Détail d'un jour, appelé au clic : la ligne complète de chaque agent, comme sur les écrans d'échéances. */
     @Transactional(readOnly = true)
     public List<CalendrierAgentDTO> agents(LocalDate jour, CritereDate critere) {
+        return agentsEntre(jour, jour, critere);
+    }
+
+    /** Tous les agents d'un mois entier (mois : 1 à 12), même forme que le détail d'un jour. */
+    @Transactional(readOnly = true)
+    public List<CalendrierAgentDTO> agentsDuMois(int annee, int mois, CritereDate critere) {
+        verifierAnnee(annee);
+        if (mois < 1 || mois > 12) {
+            throw new BusinessException("MOIS_INVALIDE", "Le mois doit être compris entre 1 et 12.");
+        }
+        YearMonth periode = YearMonth.of(annee, mois);
+        return agentsEntre(periode.atDay(1), periode.atEndOfMonth(), critere);
+    }
+
+    /** Agents dont la date retenue (préparation ou échéance) tombe dans [debut ; fin], bornes incluses. */
+    private List<CalendrierAgentDTO> agentsEntre(LocalDate debut, LocalDate fin, CritereDate critere) {
+        // Défaut : préparation, contrairement aux autres écrans d'anticipation (échéance).
         boolean surPreparation = (critere != null ? critere : CritereDate.PREPARATION) == CritereDate.PREPARATION;
-        GradesParCorps grades = gradeSuivantService.indexer();
+        Function<Placee, LocalDate> dateRetenue = surPreparation ? Placee::datePreparation : Placee::dateEcheance;
+        Function<EcheanceAnticipeeDTO, LocalDate> dateDeTri =
+                surPreparation ? EcheanceAnticipeeDTO::datePreparation : EcheanceAnticipeeDTO::dateEcheance;
+        GradesParCorps grades = gradeSuivantService.indexer();   // une requête par appel
 
         return placees()
-                .filter(p -> jour.equals(surPreparation ? p.datePreparation() : p.dateEcheance()))
+                .filter(p -> {
+                    LocalDate d = dateRetenue.apply(p);
+                    return !d.isBefore(debut) && !d.isAfter(fin);
+                })
                 .map(p -> new CalendrierAgentDTO(p.categorie(), EcheanceAnticipeeDTO.de(
-                        p.agent(), p.echeance(), p.fenetre(), changeDeGrade(p.echeance().type()) ? grades : null)))
+                        p.agent(), p.echeance(), p.fenetre(),
+                        changeDeGrade(p.echeance().type()) ? grades : null)))
                 .sorted(Comparator.comparing(CalendrierAgentDTO::categorie)
+                        .thenComparing(d -> dateDeTri.apply(d.echeance()))
                         .thenComparing(d -> d.echeance().nomComplet()))
                 .toList();
+    }
+
+    private static void verifierAnnee(int annee) {
+        if (annee < ANNEE_MIN || annee > ANNEE_MAX) {
+            throw new BusinessException("ANNEE_INVALIDE",
+                    "L'année doit être comprise entre " + ANNEE_MIN + " et " + ANNEE_MAX + ".");
+        }
     }
 
     private static boolean changeDeGrade(TypeAnticipation type) {
         return type == TypeAnticipation.AVANCEMENT || type == TypeAnticipation.TITULARISATION;
     }
 
+    /** Toutes les échéances datées des agents en activité (les anomalies n'ont pas de date). */
     private Stream<Placee> placees() {
         Map<TypeAnticipation, FenetreAnticipation> fenetres = configurationDelaiService.resoudreToutes();
         return agentRepository.findAllActifs().stream()

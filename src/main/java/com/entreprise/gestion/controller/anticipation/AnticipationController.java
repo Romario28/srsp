@@ -47,6 +47,14 @@ public class AnticipationController {
         return ResponseEntity.ok(calendrierService.agents(date, critereDate));
     }
 
+    @GetMapping("/calendrier/agents/mois")
+    public ResponseEntity<List<CalendrierAgentDTO>> calendrierAgentsDuMois(
+            @RequestParam int annee,
+            @RequestParam int mois,   // 1 à 12
+            @RequestParam(required = false) CritereDate critereDate) {
+        return ResponseEntity.ok(calendrierService.agentsDuMois(annee, mois, critereDate));
+    }
+
     // MODIFIÉ — ajout dateDebut/dateFin (format ISO attendu : yyyy-MM-dd, ex. ?dateDebut=2026-01-01)
     @GetMapping("/retraite")
     public ResponseEntity<List<EcheanceAnticipeeDTO>> retraite(
