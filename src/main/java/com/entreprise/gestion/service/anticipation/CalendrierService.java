@@ -44,9 +44,9 @@ public class CalendrierService {
      * affichée se fait côté client, sans nouvel appel.
      */
     @Transactional(readOnly = true)
-    public List<CalendrierJourDTO> annee(int annee) {
+    public List<CalendrierJourDTO> annee(int annee, FiltreAgents filtre) {
         verifierAnnee(annee);
-        return placees()
+        return placees(filtre)
                 .filter(p -> p.datePreparation().getYear() == annee || p.dateEcheance().getYear() == annee)
                 .collect(Collectors.groupingBy(
                         p -> new Cle(p.datePreparation(), p.dateEcheance(), p.categorie()), Collectors.counting()))
@@ -61,23 +61,23 @@ public class CalendrierService {
 
     /** Détail d'un jour, appelé au clic : la ligne complète de chaque agent, comme sur les écrans d'échéances. */
     @Transactional(readOnly = true)
-    public List<CalendrierAgentDTO> agents(LocalDate jour, CritereDate critere) {
-        return agentsEntre(jour, jour, critere);
+    public List<CalendrierAgentDTO> agents(LocalDate jour, CritereDate critere, FiltreAgents filtre) {
+        return agentsEntre(jour, jour, critere, filtre);
     }
 
     /** Tous les agents d'un mois entier (mois : 1 à 12), même forme que le détail d'un jour. */
     @Transactional(readOnly = true)
-    public List<CalendrierAgentDTO> agentsDuMois(int annee, int mois, CritereDate critere) {
+    public List<CalendrierAgentDTO> agentsDuMois(int annee, int mois, CritereDate critere, FiltreAgents filtre) {
         verifierAnnee(annee);
         if (mois < 1 || mois > 12) {
             throw new BusinessException("MOIS_INVALIDE", "Le mois doit être compris entre 1 et 12.");
         }
         YearMonth periode = YearMonth.of(annee, mois);
-        return agentsEntre(periode.atDay(1), periode.atEndOfMonth(), critere);
+        return agentsEntre(periode.atDay(1), periode.atEndOfMonth(), critere, filtre);
     }
 
     /** Agents dont la date retenue (préparation ou échéance) tombe dans [debut ; fin], bornes incluses. */
-    private List<CalendrierAgentDTO> agentsEntre(LocalDate debut, LocalDate fin, CritereDate critere) {
+    private List<CalendrierAgentDTO> agentsEntre(LocalDate debut, LocalDate fin, CritereDate critere, FiltreAgents filtre) {
         // Défaut : préparation, contrairement aux autres écrans d'anticipation (échéance).
         boolean surPreparation = (critere != null ? critere : CritereDate.PREPARATION) == CritereDate.PREPARATION;
         Function<Placee, LocalDate> dateRetenue = surPreparation ? Placee::datePreparation : Placee::dateEcheance;
@@ -85,7 +85,7 @@ public class CalendrierService {
                 surPreparation ? EcheanceAnticipeeDTO::datePreparation : EcheanceAnticipeeDTO::dateEcheance;
         GradesParCorps grades = gradeSuivantService.indexer();   // une requête par appel
 
-        return placees()
+        return placees(filtre)
                 .filter(p -> {
                     LocalDate d = dateRetenue.apply(p);
                     return !d.isBefore(debut) && !d.isAfter(fin);
@@ -110,10 +110,11 @@ public class CalendrierService {
         return type == TypeAnticipation.AVANCEMENT || type == TypeAnticipation.TITULARISATION;
     }
 
-    /** Toutes les échéances datées des agents en activité (les anomalies n'ont pas de date). */
-    private Stream<Placee> placees() {
+    /** Échéances datées des agents en activité qui passent le filtre (les anomalies n'ont pas de date). */
+    private Stream<Placee> placees(FiltreAgents filtre) {
         Map<TypeAnticipation, FenetreAnticipation> fenetres = configurationDelaiService.resoudreToutes();
         return agentRepository.findAllActifs().stream()
+                .filter(filtre::accepte)
                 .flatMap(a -> moteur.calculerEcheances(a).stream()
                         .filter(e -> e.type() != TypeAnticipation.ANOMALIE && e.dateEcheance() != null)
                         .map(e -> new Placee(a, e, CategorieCalendrier.de(e.type(), a.getStatut()),

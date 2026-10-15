@@ -7,12 +7,28 @@ import java.time.LocalDate;
 
 /** Fiche complète d'un agent, à charger uniquement à l'ouverture de sa fiche. */
 public record AgentFicheDTO(
-        String matricule, String nom, String prenoms, StatutAgent statut,
-        LocalDate dateNaissance, String sexe, String cin, String posteNumero,
-        Reference corps, String categorieCode, Reference grade, String indice,
-        LocalDate dateDebutContrat, LocalDate dateFinContrat, LocalDate avanceDate,
-        Reference situation, Reference hee, String heeCategorieCode, String sectionCode,
-        Reference localite, Reference soa, String regCode, Reference ministere
+        String matricule,
+        String nom,
+        String prenoms,
+        StatutAgent statut,
+        LocalDate dateNaissance,
+        String sexe,
+        String cin,
+        String posteNumero,
+        Reference corps,
+        String categorieCode,
+        Reference grade,
+        String indice,
+        LocalDate dateDebutContrat,
+        LocalDate dateFinContrat,
+        LocalDate avanceDate,
+        Reference situation,
+        Reference hee,
+        String heeCategorieCode,
+        String sectionCode,
+        Reference localite,
+        Reference soa, String regCode,
+        Reference ministere
 ) {
     /** Code et libellé d'un référentiel. */
     public record Reference(String code, String libelle) {}

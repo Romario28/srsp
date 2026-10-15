@@ -5,6 +5,7 @@ import com.entreprise.gestion.entite.anticipation.StatutAlerte;
 import com.entreprise.gestion.entite.anticipation.TypeAnticipation;
 import com.entreprise.gestion.security.UserDetailsImpl;
 import com.entreprise.gestion.service.anticipation.AlerteService;
+import com.entreprise.gestion.service.anticipation.FiltreAgents;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -26,8 +27,9 @@ public class AlerteController {
             @RequestParam(required = false) TypeAnticipation type,
             @RequestParam(required = false) StatutAlerte statut,
             @RequestParam(required = false) String matricule,
+            @ModelAttribute FiltreAgents filtre,
             Pageable page) {
-        return ResponseEntity.ok(alerteService.lister(type, statut, matricule, page));
+        return ResponseEntity.ok(alerteService.lister(type, statut, matricule, filtre, page));
     }
 
     @GetMapping("/{id}")

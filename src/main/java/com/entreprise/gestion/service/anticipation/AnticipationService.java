@@ -1,7 +1,6 @@
 package com.entreprise.gestion.service.anticipation;
 
 import com.entreprise.gestion.entite.anticipation.Agent;
-import com.entreprise.gestion.entite.anticipation.StatutAgent;
 import com.entreprise.gestion.entite.anticipation.TypeAnticipation;
 import com.entreprise.gestion.dto.anticipation.AgentFicheDTO;
 import com.entreprise.gestion.exception.BusinessException; // AJOUTÉ
@@ -40,36 +39,35 @@ public class AnticipationService {
     @Transactional(readOnly = true)
     public List<EcheanceAnticipeeDTO> departsRetraite(Integer prevenanceMois, Integer retardMois,
                                                       LocalDate dateDebut, LocalDate dateFin, CritereDate critereDate,
-                                                      StatutAgent statut) {
-        return calculerParType(TypeAnticipation.DEPART_RETRAITE, prevenanceMois, retardMois, dateDebut, dateFin, critereDate, statut);
+                                                      FiltreAgents filtre) {
+        return calculerParType(TypeAnticipation.DEPART_RETRAITE, prevenanceMois, retardMois, dateDebut, dateFin, critereDate, filtre);
     }
 
     @Transactional(readOnly = true)
     public List<EcheanceAnticipeeDTO> avancementsDus(Integer prevenanceMois, Integer retardMois,
                                                      LocalDate dateDebut, LocalDate dateFin, CritereDate critereDate,
-                                                     StatutAgent statut) {
-        return calculerParType(TypeAnticipation.AVANCEMENT, prevenanceMois, retardMois, dateDebut, dateFin, critereDate, statut);
+                                                     FiltreAgents filtre) {
+        return calculerParType(TypeAnticipation.AVANCEMENT, prevenanceMois, retardMois, dateDebut, dateFin, critereDate, filtre);
     }
 
     @Transactional(readOnly = true)
     public List<EcheanceAnticipeeDTO> titularisationsDues(Integer prevenanceMois, Integer retardMois,
                                                           LocalDate dateDebut, LocalDate dateFin, CritereDate critereDate,
-                                                          StatutAgent statut) {
-        return calculerParType(TypeAnticipation.TITULARISATION, prevenanceMois, retardMois, dateDebut, dateFin, critereDate, statut);
+                                                          FiltreAgents filtre) {
+        return calculerParType(TypeAnticipation.TITULARISATION, prevenanceMois, retardMois, dateDebut, dateFin, critereDate, filtre);
     }
 
     @Transactional(readOnly = true)
     public List<EcheanceAnticipeeDTO> finsContrat(Integer prevenanceMois, Integer retardMois,
                                                   LocalDate dateDebut, LocalDate dateFin, CritereDate critereDate,
-                                                  StatutAgent statut) {
-        return calculerParType(TypeAnticipation.FIN_CONTRAT, prevenanceMois, retardMois, dateDebut, dateFin, critereDate, statut);
+                                                  FiltreAgents filtre) {
+        return calculerParType(TypeAnticipation.FIN_CONTRAT, prevenanceMois, retardMois, dateDebut, dateFin, critereDate, filtre);
     }
 
-    // anomalies() — INCHANGÉE : pas de dateEcheance à filtrer (voir note en fin de réponse)
     @Transactional(readOnly = true)
-    public List<EcheanceAnticipeeDTO> anomalies(StatutAgent statut) {
+    public List<EcheanceAnticipeeDTO> anomalies(FiltreAgents filtre) {
         return agentRepository.findAllActifs().stream()
-                .filter(a -> statut == null || a.getStatut() == statut)
+                .filter(filtre::accepte)
                 .flatMap(a -> moteur.calculerEcheances(a).stream()
                         .filter(e -> e.type() == TypeAnticipation.ANOMALIE)
                         .map(e -> versAlerte(a, e, null, null)))
@@ -83,7 +81,7 @@ public class AnticipationService {
      */
     private List<EcheanceAnticipeeDTO> calculerParType(TypeAnticipation type, Integer prevenanceMois,
                                                        Integer retardMois, LocalDate dateDebut, LocalDate dateFin,
-                                                       CritereDate critereDate, StatutAgent statut) {
+                                                       CritereDate critereDate, FiltreAgents filtre) {
 
         // AJOUTÉ — même validation que PorteeDelegueeService.accorder (code DATES_INVALIDES réutilisé)
         if (dateDebut != null && dateFin != null && dateFin.isBefore(dateDebut)) {
@@ -102,7 +100,7 @@ public class AnticipationService {
                 ? gradeSuivantService.indexer() : null;
 
         return agentRepository.findAllActifs().stream()
-                .filter(a -> statut == null || a.getStatut() == statut)
+                .filter(filtre::accepte)
                 .flatMap(a -> moteur.calculerEcheances(a).stream()
                         .filter(e -> e.type() == type)
                         .map(e -> versAlerte(a, e, fenetre, grades)))

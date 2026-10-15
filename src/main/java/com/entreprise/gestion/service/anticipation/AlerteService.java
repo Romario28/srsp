@@ -20,10 +20,11 @@ public class AlerteService {
     private final AlerteRepository alerteRepository;
 
     @Transactional(readOnly = true)
-    public Page<AlerteDTO> lister(TypeAnticipation type, StatutAlerte statut, String matricule, Pageable page) {
+    public Page<AlerteDTO> lister(TypeAnticipation type, StatutAlerte statut, String matricule,
+                                  FiltreAgents filtre, Pageable page) {
         // Point d'extension futur : filtre de périmètre (VisibilityScope) si les alertes
         // sont rattachées à un périmètre organisationnel.
-        return alerteRepository.rechercher(type, statut, matricule, page).map(AlerteDTO::from);
+        return alerteRepository.rechercher(type, statut, matricule, filtre, page).map(AlerteDTO::from);
     }
 
     @Transactional
