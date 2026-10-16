@@ -65,8 +65,9 @@ public class MoteurAnticipation {
      * identique pour tous les statuts (FONCTIONNAIRE, CONTRACTUEL, ELD).
      */
     private Echeance calculerAvancement(Agent a, TypeAnticipation type) {
-        boolean ancrageParContrat = (a.getAvanceDate() == null);
-        LocalDate ancrage = ancrageParContrat ? a.getDateDebutContrat() : a.getAvanceDate();
+//        boolean ancrageParContrat = (a.getAvanceDate() == null);
+//        LocalDate ancrage = ancrageParContrat ? a.getDateDebutContrat() : a.getAvanceDate();
+        LocalDate ancrage =  a.getAvanceDate();
         if (ancrage == null) {
             return anomalie(a, TypeAnomalie.ANCRAGE_MANQUANT, "Ni date d'avancement ni date de début de contrat renseignée");
         }
@@ -78,9 +79,7 @@ public class MoteurAnticipation {
                     + "/" + a.getGrade().getCode());
         }
 
-        String details = ancrageParContrat ? "Ancrage : date de début de contrat (avance_date absente)" : null;
-
-        return new Echeance(a.getMatricule(), nomComplet(a), type, ancrage.plusYears(duree), details);
+        return new Echeance(a.getMatricule(), nomComplet(a), type, ancrage.plusYears(duree), null);
     }
 
 
