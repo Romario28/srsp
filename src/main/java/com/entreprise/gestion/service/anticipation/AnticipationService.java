@@ -66,12 +66,23 @@ public class AnticipationService {
 
     @Transactional(readOnly = true)
     public List<EcheanceAnticipeeDTO> anomalies(FiltreAgents filtre) {
+        return lignes(anomaliesAvecAgent(filtre));
+    }
+
+    public record AgentEcheance(Agent agent, Echeance echeance, EcheanceAnticipeeDTO ligne) {}
+
+    @Transactional(readOnly = true)
+    public List<AgentEcheance> anomaliesAvecAgent(FiltreAgents filtre) {
         return agentRepository.findAllActifs().stream()
                 .filter(filtre::accepte)
                 .flatMap(a -> moteur.calculerEcheances(a).stream()
                         .filter(e -> e.type() == TypeAnticipation.ANOMALIE)
-                        .map(e -> versAlerte(a, e, null, null)))
+                        .map(e -> new AgentEcheance(a, e, versAlerte(a, e, null, null))))
                 .collect(Collectors.toList());
+    }
+
+    private static List<EcheanceAnticipeeDTO> lignes(List<AgentEcheance> echeances) {
+        return echeances.stream().map(AgentEcheance::ligne).collect(Collectors.toList());
     }
 
     /**
@@ -79,6 +90,34 @@ public class AnticipationService {
      * contient aujourd'hui sont retenus. Avec dateDebut/dateFin, le critère choisi filtre l'échéance
      * ou sa date de préparation ; le délai de préparation reste résolu pour calculer celle-ci.
      */
+    public FenetreAnticipation fenetreEffective(TypeAnticipation type, Integer prevenanceMois, Integer retardMois) {
+        FenetreAnticipation resolue = configurationDelaiService.resoudreFenetre(type);
+        return new FenetreAnticipation(prevenanceMois != null ? prevenanceMois : resolue.prevenanceMois(),
+                retardMois != null ? retardMois : resolue.retardMois());
+    }
+
+    @Transactional(readOnly = true)
+    public List<AgentEcheance> echeancesAvecAgent(TypeAnticipation type, Integer prevenanceMois, Integer retardMois,
+            LocalDate dateDebut, LocalDate dateFin, CritereDate critereDate, FiltreAgents filtre) {
+
+        if (dateDebut != null && dateFin != null && dateFin.isBefore(dateDebut)) {
+            throw new BusinessException("DATES_INVALIDES", "La date de fin précède la date de début.");
+        }
+        boolean filtreDatesActif = dateDebut != null || dateFin != null;
+        CritereDate critere = critereDate != null ? critereDate : CritereDate.ECHEANCE;
+        LocalDate aujourdhui = LocalDate.now();
+        FenetreAnticipation fenetre = fenetreEffective(type, prevenanceMois, retardMois);
+        GradesParCorps grades = type == TypeAnticipation.AVANCEMENT || type == TypeAnticipation.TITULARISATION
+                ? gradeSuivantService.indexer() : null;
+        return agentRepository.findAllActifs().stream().filter(filtre::accepte)
+                .flatMap(a -> moteur.calculerEcheances(a).stream().filter(e -> e.type() == type)
+                        .map(e -> new AgentEcheance(a, e, versAlerte(a, e, fenetre, grades))))
+                .filter(ae -> filtreDatesActif
+                        ? dansIntervalle(critere == CritereDate.PREPARATION ? ae.ligne().datePreparation() : ae.ligne().dateEcheance(), dateDebut, dateFin)
+                        : fenetre.contient(ae.ligne().dateEcheance(), aujourdhui))
+                .sorted(Comparator.comparingLong(ae -> ae.ligne().joursRestants())).collect(Collectors.toList());
+    }
+
     private List<EcheanceAnticipeeDTO> calculerParType(TypeAnticipation type, Integer prevenanceMois,
                                                        Integer retardMois, LocalDate dateDebut, LocalDate dateFin,
                                                        CritereDate critereDate, FiltreAgents filtre) {

@@ -13,9 +13,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -26,6 +28,7 @@ public class CalendrierService {
 
     private static final int ANNEE_MIN = 1900;
     private static final int ANNEE_MAX = 2200;
+    private static final long MAX_JOURS_EXPORT = 366;
 
     private final AgentRepository agentRepository;
     private final MoteurAnticipation moteur;
@@ -37,6 +40,7 @@ public class CalendrierService {
         LocalDate dateEcheance() { return echeance.dateEcheance(); }
     }
     private record Cle(LocalDate datePreparation, LocalDate dateEcheance, CategorieCalendrier categorie) {}
+    public record EcheancePlacee(Agent agent, CategorieCalendrier categorie, LocalDate datePreparation, LocalDate dateEcheance) {}
 
     /**
      * Une année du calendrier, en un seul parcours des agents : toutes les échéances dont la date de
@@ -74,6 +78,24 @@ public class CalendrierService {
         }
         YearMonth periode = YearMonth.of(annee, mois);
         return agentsEntre(periode.atDay(1), periode.atEndOfMonth(), critere, filtre);
+    }
+
+    @Transactional(readOnly = true)
+    public List<EcheancePlacee> pourExport(LocalDate debut, LocalDate fin, CritereDate critere,
+            Set<CategorieCalendrier> types, FiltreAgents filtre) {
+        if (debut == null || fin == null || fin.isBefore(debut))
+            throw new BusinessException("DATES_INVALIDES", "La période du calendrier est invalide.");
+        if (ChronoUnit.DAYS.between(debut, fin) > MAX_JOURS_EXPORT)
+            throw new BusinessException("PERIODE_TROP_LONGUE", "La période ne peut pas dépasser une année.");
+        boolean preparation = (critere != null ? critere : CritereDate.PREPARATION) == CritereDate.PREPARATION;
+        return placees(filtre).filter(p -> {
+                    LocalDate d = preparation ? p.datePreparation() : p.dateEcheance();
+                    return !d.isBefore(debut) && !d.isAfter(fin);
+                }).filter(p -> types == null || types.isEmpty() || types.contains(p.categorie()))
+                .sorted(Comparator.comparing(Placee::categorie)
+                        .thenComparing(preparation ? Placee::datePreparation : Placee::dateEcheance)
+                        .thenComparing(p -> p.echeance().nomComplet()))
+                .map(p -> new EcheancePlacee(p.agent(), p.categorie(), p.datePreparation(), p.dateEcheance())).toList();
     }
 
     /** Agents dont la date retenue (préparation ou échéance) tombe dans [debut ; fin], bornes incluses. */

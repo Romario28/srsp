@@ -5,10 +5,15 @@ import com.entreprise.gestion.entite.anticipation.Agent;
 import com.entreprise.gestion.service.anticipation.CodesSituationAdministrative;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 
 public interface AgentRepository extends JpaRepository<Agent, String> {
+
+    @Query("SELECT a FROM Agent a LEFT JOIN FETCH a.corps LEFT JOIN FETCH a.grade WHERE a.matricule IN :matricules")
+    List<Agent> findAvecReferences(@Param("matricules") Collection<String> matricules);
 
     /** Même définition que findAllActifs : sans situation, ou situation « en activité ». */
     String ACTIFS = "(a.sanction IS NULL OR a.sanction.code = '" + CodesSituationAdministrative.CODE_ACTIF + "')";

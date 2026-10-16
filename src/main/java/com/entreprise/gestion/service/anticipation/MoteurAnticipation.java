@@ -34,7 +34,7 @@ public class MoteurAnticipation {
     }
 
     private Echeance calculerRetraite(Agent a) {
-        if (a.getDateNaissance() == null) return anomalie(a, "Date de naissance manquante");
+        if (a.getDateNaissance() == null) return anomalie(a, TypeAnomalie.DATE_NAISSANCE_MANQUANTE, "Date de naissance manquante");
         LocalDate echeance = a.getDateNaissance().plusYears(ageRetraite);
         return new Echeance(a.getMatricule(), nomComplet(a), TypeAnticipation.DEPART_RETRAITE, echeance, null);
     }
@@ -47,9 +47,9 @@ public class MoteurAnticipation {
         boolean gradeManquant = a.getGrade() == null;
         boolean corpsManquant = a.getCorps() == null;
 
-        if (gradeManquant && corpsManquant) return anomalie(a, "Grade et corps manquants");
-        if (gradeManquant) return anomalie(a, "Grade manquant");
-        if (corpsManquant) return anomalie(a, "Corps manquant");
+        if (gradeManquant && corpsManquant) return anomalie(a, TypeAnomalie.GRADE_ET_CORPS_MANQUANTS, "Grade et corps manquants");
+        if (gradeManquant) return anomalie(a, TypeAnomalie.GRADE_MANQUANT, "Grade manquant");
+        if (corpsManquant) return anomalie(a, TypeAnomalie.CORPS_MANQUANT, "Corps manquant");
 
         TypeAnticipation type = gradesStagiaire.contains(a.getGrade().getCode())
                 ? TypeAnticipation.TITULARISATION
@@ -68,12 +68,12 @@ public class MoteurAnticipation {
         boolean ancrageParContrat = (a.getAvanceDate() == null);
         LocalDate ancrage = ancrageParContrat ? a.getDateDebutContrat() : a.getAvanceDate();
         if (ancrage == null) {
-            return anomalie(a, "Ni date d'avancement ni date de début de contrat renseignée");
+            return anomalie(a, TypeAnomalie.ANCRAGE_MANQUANT, "Ni date d'avancement ni date de début de contrat renseignée");
         }
 
         Integer duree = dureeRequise(a);
         if (duree == null) {
-            return anomalie(a, "Durée requise non renseignée pour "
+            return anomalie(a, TypeAnomalie.DUREE_REQUISE_MANQUANTE, "Durée requise non renseignée pour "
                     + a.getCorps().getCode() + "/" + a.getCorps().getCategorie()
                     + "/" + a.getGrade().getCode());
         }
@@ -109,8 +109,8 @@ public class MoteurAnticipation {
                 .orElse(null);
     }
 
-    private Echeance anomalie(Agent a, String message) {
-        return new Echeance(a.getMatricule(), nomComplet(a), TypeAnticipation.ANOMALIE, null, message);
+    private Echeance anomalie(Agent a, TypeAnomalie type, String message) {
+        return new Echeance(a.getMatricule(), nomComplet(a), TypeAnticipation.ANOMALIE, null, message, type);
     }
 
     private String nomComplet(Agent a) { return a.getPrenoms() + " " + a.getNom(); }

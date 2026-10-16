@@ -64,6 +64,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/anticipation/**", "/api/alertes/**").hasRole("ADMIN")
                         .requestMatchers("/error").permitAll()
                         .requestMatchers("/api/imports/**").hasRole("ADMIN")  // ou .hasRole("ADMIN")
+                        .requestMatchers("/api/exports/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
                 .headers(h -> h.frameOptions(f -> f.disable()))
@@ -84,6 +85,7 @@ public class SecurityConfig {
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
+        config.setExposedHeaders(List.of("Content-Disposition"));
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
         return source;
