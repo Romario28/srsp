@@ -82,6 +82,7 @@ public class ConfigurationDelaiService {
             case AVANCEMENT -> "Avancement";
             case TITULARISATION -> "Titularisation";
             case FIN_CONTRAT -> "Fin de contrat";
+            case INTEGRATION -> "Intégration";
             case ANOMALIE -> "Anomalie";
         };
     }

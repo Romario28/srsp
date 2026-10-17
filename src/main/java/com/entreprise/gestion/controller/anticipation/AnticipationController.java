@@ -113,6 +113,18 @@ public class AnticipationController {
         return ResponseEntity.ok(anticipationService.finsContrat(prevenanceMois, retardMois, dateDebut, dateFin, critereDate, filtre));
     }
 
+    @GetMapping("/integration")
+    public ResponseEntity<List<EcheanceAnticipeeDTO>> integration(
+            @RequestParam(required = false) Integer prevenanceMois,
+            @RequestParam(required = false) Integer retardMois,
+            @RequestParam(required = false) LocalDate dateDebut,
+            @RequestParam(required = false) LocalDate dateFin,
+            @RequestParam(required = false) CritereDate critereDate,
+            @ModelAttribute FiltreAgents filtre) {
+        return ResponseEntity.ok(anticipationService.integrationsDues(
+                prevenanceMois, retardMois, dateDebut, dateFin, critereDate, filtre));
+    }
+
     @GetMapping("/anomalies")
     public ResponseEntity<List<EcheanceAnticipeeDTO>> anomalies(@ModelAttribute FiltreAgents filtre) {
         return ResponseEntity.ok(anticipationService.anomalies(filtre));

@@ -17,7 +17,8 @@ public final class DelaisParDefaut {
             TypeAnticipation.DEPART_RETRAITE, new FenetreAnticipation(12, 0),
             TypeAnticipation.AVANCEMENT,      new FenetreAnticipation(6, 0),
             TypeAnticipation.TITULARISATION,  new FenetreAnticipation(3, 0),
-            TypeAnticipation.FIN_CONTRAT,     new FenetreAnticipation(3, 1)
+            TypeAnticipation.FIN_CONTRAT,     new FenetreAnticipation(3, 1),
+            TypeAnticipation.INTEGRATION,     new FenetreAnticipation(3, 0)
             // ANOMALIE : pas de fenêtre — toujours remontée, voir AnticipationService.anomalies()
     );
 

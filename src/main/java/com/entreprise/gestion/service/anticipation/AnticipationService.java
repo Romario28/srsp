@@ -33,7 +33,15 @@ public class AnticipationService {
     public AgentFicheDTO fiche(String matricule) {
         Agent agent = agentRepository.findById(matricule)
                 .orElseThrow(() -> new BusinessException("AGENT_INTROUVABLE", "Agent introuvable : " + matricule));
-        return AgentFicheDTO.from(agent);
+        return AgentFicheDTO.from(agent, integrationDe(agent));
+    }
+
+    private AgentFicheDTO.Integration integrationDe(Agent agent) {
+        RegleIntegration.Analyse analyse = RegleIntegration.analyser(agent);
+        LocalDate preparation = analyse.dateIntegration() == null ? null
+                : configurationDelaiService.resoudreFenetre(TypeAnticipation.INTEGRATION)
+                        .datePreparation(analyse.dateIntegration());
+        return new AgentFicheDTO.Integration(analyse.situation(), analyse.dateIntegration(), preparation);
     }
 
     @Transactional(readOnly = true)
@@ -62,6 +70,12 @@ public class AnticipationService {
                                                   LocalDate dateDebut, LocalDate dateFin, CritereDate critereDate,
                                                   FiltreAgents filtre) {
         return calculerParType(TypeAnticipation.FIN_CONTRAT, prevenanceMois, retardMois, dateDebut, dateFin, critereDate, filtre);
+    }
+
+    @Transactional(readOnly = true)
+    public List<EcheanceAnticipeeDTO> integrationsDues(Integer prevenanceMois, Integer retardMois,
+            LocalDate dateDebut, LocalDate dateFin, CritereDate critereDate, FiltreAgents filtre) {
+        return calculerParType(TypeAnticipation.INTEGRATION, prevenanceMois, retardMois, dateDebut, dateFin, critereDate, filtre);
     }
 
     @Transactional(readOnly = true)

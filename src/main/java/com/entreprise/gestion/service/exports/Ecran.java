@@ -6,7 +6,8 @@ import java.util.Arrays;
 public enum Ecran {
     CALENDRIER("calendrier", "Calendrier"), RETRAITE("retraite", "Départs à la retraite"),
     AVANCEMENT("avancement", "Avancements"), TITULARISATION("titularisation", "Titularisations"),
-    FIN_CONTRAT("fin-contrat", "Fins de contrat"), ANOMALIES("anomalies", "Anomalies"), ALERTES("alertes", "Alertes");
+    FIN_CONTRAT("fin-contrat", "Fins de contrat"), INTEGRATION("integration", "Intégrations"),
+    ANOMALIES("anomalies", "Anomalies"), ALERTES("alertes", "Alertes");
     private final String slug, libelle;
     Ecran(String slug, String libelle) { this.slug = slug; this.libelle = libelle; }
     public String slug() { return slug; }

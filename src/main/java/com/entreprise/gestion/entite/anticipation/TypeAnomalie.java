@@ -7,7 +7,8 @@ public enum TypeAnomalie {
     GRADE_MANQUANT("Grade manquant"),
     CORPS_MANQUANT("Corps manquant"),
     ANCRAGE_MANQUANT("Date d'avancement et début de contrat manquants"),
-    DUREE_REQUISE_MANQUANTE("Durée requise non renseignée");
+    DUREE_REQUISE_MANQUANTE("Durée requise non renseignée"),
+    DEBUT_CONTRAT_MANQUANT("Date de début de contrat manquante");
 
     private final String libelle;
     TypeAnomalie(String libelle) { this.libelle = libelle; }

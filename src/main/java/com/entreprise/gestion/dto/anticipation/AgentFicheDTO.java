@@ -2,6 +2,7 @@ package com.entreprise.gestion.dto.anticipation;
 
 import com.entreprise.gestion.entite.anticipation.Agent;
 import com.entreprise.gestion.entite.anticipation.StatutAgent;
+import com.entreprise.gestion.entite.anticipation.SituationIntegration;
 
 import java.time.LocalDate;
 
@@ -28,12 +29,19 @@ public record AgentFicheDTO(
         String sectionCode,
         Reference localite,
         Reference soa, String regCode,
-        Reference ministere
+        Reference ministere,
+        Integration integration
 ) {
     /** Code et libellé d'un référentiel. */
     public record Reference(String code, String libelle) {}
 
+    public record Integration(SituationIntegration situation, LocalDate dateIntegration, LocalDate datePreparation) {}
+
     public static AgentFicheDTO from(Agent a) {
+        return from(a, null);
+    }
+
+    public static AgentFicheDTO from(Agent a, Integration integration) {
         return new AgentFicheDTO(
                 a.getMatricule(), a.getNom(), a.getPrenoms(), a.getStatut(),
                 a.getDateNaissance(), a.getSexe(), a.getCin(), a.getPosteNumero(),
@@ -48,6 +56,7 @@ public record AgentFicheDTO(
                 a.getLocalite() != null ? new Reference(a.getLocalite().getCode(), a.getLocalite().getNom()) : null,
                 a.getSoa() != null ? new Reference(a.getSoa().getCode(), a.getSoa().getLibelle()) : null,
                 a.getRegCode(),
-                a.getMinistere() != null ? new Reference(a.getMinistere().getCode(), a.getMinistere().getLibelle()) : null);
+                a.getMinistere() != null ? new Reference(a.getMinistere().getCode(), a.getMinistere().getLibelle()) : null,
+                integration);
     }
 }

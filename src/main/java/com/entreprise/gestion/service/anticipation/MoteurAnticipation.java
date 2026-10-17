@@ -30,6 +30,7 @@ public class MoteurAnticipation {
         ajouter(resultats, calculerRetraite(a));
         ajouter(resultats, calculerAvancementOuAnomalie(a));
         ajouter(resultats, calculerFinContrat(a));
+        ajouter(resultats, calculerIntegration(a));
         return resultats;
     }
 
@@ -88,6 +89,17 @@ public class MoteurAnticipation {
         if (a.getDateFinContrat() == null) return null;
         return new Echeance(a.getMatricule(), nomComplet(a), TypeAnticipation.FIN_CONTRAT,
                 a.getDateFinContrat(), null);
+    }
+
+    Echeance calculerIntegration(Agent a) {
+        RegleIntegration.Analyse r = RegleIntegration.analyser(a);
+        return switch (r.situation()) {
+            case CONCERNE -> new Echeance(a.getMatricule(), nomComplet(a), TypeAnticipation.INTEGRATION,
+                    r.dateIntegration(), null);
+            case DEBUT_MANQUANT -> anomalie(a, TypeAnomalie.DEBUT_CONTRAT_MANQUANT,
+                    "Date de début de contrat manquante : intégration non calculable");
+            case NON_CONTRACTUEL, CONTRAT_AVEC_FIN -> null;
+        };
     }
 
 //    private Integer dureeRequise(String corpsCode, String gradeCode) {

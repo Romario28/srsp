@@ -56,6 +56,11 @@ public class ExportService {
                 if(agent!=null) lignes.add(ligneBase(agent,vals));
                 else { Object[] base=new Object[BASE.size()+vals.length]; base[1]=a.getMatriculeAgent(); System.arraycopy(vals,0,base,BASE.size(),vals.length); lignes.add(base); }
             }
+        } else if (d.ecran()==Ecran.INTEGRATION) {
+            extra.addAll(List.of("DATE_PREPARATION","DATE_INTEGRATION","DATE_DEBUT_CONTRAT","STATUT_ACTUEL"));
+            anticipation.echeancesAvecAgent(TypeAnticipation.INTEGRATION,d.prevenanceMois(),d.retardMois(),d.dateDebut(),d.dateFin(),d.critereDate(),filtre)
+                    .forEach(ae -> lignes.add(ligneBase(ae.agent(), ae.ligne().datePreparation(), ae.ligne().dateEcheance(),
+                            ae.agent().getDateDebutContrat(), ae.agent().getStatut()==null?null:ae.agent().getStatut().name())));
         } else if (d.ecran()==Ecran.ANOMALIES) {
             extra.addAll(List.of("TYPE_ANOMALIE","DETAILS"));
             anticipation.anomaliesAvecAgent(filtre).forEach(ae -> lignes.add(ligneBase(ae.agent(), ae.echeance().typeAnomalie()==null?null:ae.echeance().typeAnomalie().libelle(), ae.echeance().details())));

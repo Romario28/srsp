@@ -5,5 +5,6 @@ public enum TypeAnticipation {
     AVANCEMENT,
     TITULARISATION,
     FIN_CONTRAT,
+    INTEGRATION,
     ANOMALIE   // donnée manquante empêchant un calcul — remonté, pas juste ignoré
 }
