@@ -118,51 +118,30 @@ public class AnticipationService {
             throw new BusinessException("DATES_INVALIDES", "La date de fin précède la date de début.");
         }
         boolean filtreDatesActif = dateDebut != null || dateFin != null;
-        CritereDate critere = critereDate != null ? critereDate : CritereDate.ECHEANCE;
+        boolean surPreparation = critereDate == CritereDate.PREPARATION;
         LocalDate aujourdhui = LocalDate.now();
         FenetreAnticipation fenetre = fenetreEffective(type, prevenanceMois, retardMois);
+        FenetreAnticipation fenetrePreparation = surPreparation
+                ? configurationDelaiService.resoudreFenetre(type) : fenetre;
         GradesParCorps grades = type == TypeAnticipation.AVANCEMENT || type == TypeAnticipation.TITULARISATION
                 ? gradeSuivantService.indexer() : null;
         return agentRepository.findAllActifs().stream().filter(filtre::accepte)
                 .flatMap(a -> moteur.calculerEcheances(a).stream().filter(e -> e.type() == type)
-                        .map(e -> new AgentEcheance(a, e, versAlerte(a, e, fenetre, grades))))
-                .filter(ae -> filtreDatesActif
-                        ? dansIntervalle(critere == CritereDate.PREPARATION ? ae.ligne().datePreparation() : ae.ligne().dateEcheance(), dateDebut, dateFin)
-                        : fenetre.contient(ae.ligne().dateEcheance(), aujourdhui))
+                        .map(e -> new AgentEcheance(a, e, versAlerte(a, e, fenetrePreparation, grades))))
+                .filter(ae -> {
+                    LocalDate retenue = surPreparation ? ae.ligne().datePreparation() : ae.ligne().dateEcheance();
+                    return filtreDatesActif
+                            ? dansIntervalle(retenue, dateDebut, dateFin)
+                            : fenetre.contient(retenue, aujourdhui);
+                })
                 .sorted(Comparator.comparingLong(ae -> ae.ligne().joursRestants())).collect(Collectors.toList());
     }
 
     private List<EcheanceAnticipeeDTO> calculerParType(TypeAnticipation type, Integer prevenanceMois,
                                                        Integer retardMois, LocalDate dateDebut, LocalDate dateFin,
                                                        CritereDate critereDate, FiltreAgents filtre) {
-
-        // AJOUTÉ — même validation que PorteeDelegueeService.accorder (code DATES_INVALIDES réutilisé)
-        if (dateDebut != null && dateFin != null && dateFin.isBefore(dateDebut)) {
-            throw new BusinessException("DATES_INVALIDES", "La date de fin précède la date de début.");
-        }
-
-        boolean filtreDatesActif = (dateDebut != null || dateFin != null);   // AJOUTÉ
-        CritereDate critere = critereDate != null ? critereDate : CritereDate.ECHEANCE;
-        LocalDate aujourdhui = LocalDate.now();
-
-        FenetreAnticipation resolue = configurationDelaiService.resoudreFenetre(type);
-        FenetreAnticipation fenetre = new FenetreAnticipation(
-                prevenanceMois != null ? prevenanceMois : resolue.prevenanceMois(),
-                retardMois != null ? retardMois : resolue.retardMois());
-        GradesParCorps grades = type == TypeAnticipation.AVANCEMENT || type == TypeAnticipation.TITULARISATION
-                ? gradeSuivantService.indexer() : null;
-
-        return agentRepository.findAllActifs().stream()
-                .filter(filtre::accepte)
-                .flatMap(a -> moteur.calculerEcheances(a).stream()
-                        .filter(e -> e.type() == type)
-                        .map(e -> versAlerte(a, e, fenetre, grades)))
-                .filter(al -> filtreDatesActif
-                        ? dansIntervalle(critere == CritereDate.PREPARATION
-                                ? al.datePreparation() : al.dateEcheance(), dateDebut, dateFin)
-                        : fenetre.contient(al.dateEcheance(), aujourdhui))
-                .sorted(Comparator.comparingLong(EcheanceAnticipeeDTO::joursRestants))
-                .collect(Collectors.toList());
+        return lignes(echeancesAvecAgent(type, prevenanceMois, retardMois,
+                dateDebut, dateFin, critereDate, filtre));
     }
 
     // AJOUTÉ — une échéance de type non-ANOMALIE a toujours une dateEcheance non nulle
