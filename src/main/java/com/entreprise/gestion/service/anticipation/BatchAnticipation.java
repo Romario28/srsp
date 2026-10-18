@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import com.entreprise.gestion.service.dossier.DossierGenerateur;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -37,6 +38,7 @@ public class BatchAnticipation {
     private final ConfigurationDelaiService configurationDelaiService; // ← remplace ConfigurationDelaiRepository
     private final GradeSuivantService gradeSuivantService;
     private final EntityManager entityManager;
+    private final DossierGenerateur dossierGenerateur;
 
     @Scheduled(cron = "${anticipation.batch.cron:0 */60 * * * *}")
     @Transactional
@@ -46,11 +48,13 @@ public class BatchAnticipation {
         GradesParCorps grades = gradeSuivantService.indexer();
         long debut = System.currentTimeMillis();
         long alertesAvant = alerteRepository.count();
+        DossierGenerateur.Passage dossiers = dossierGenerateur.ouvrir(aujourdhui);
 
         int compteur = 0;
         for (Agent agent : agentRepository.findAllActifs()) {
             for (Echeance e : moteur.calculerEcheances(agent)) {
                 traiter(agent, e, aujourdhui, fenetres, grades);
+                dossiers.traiter(agent, e, fenetres.get(e.type()));
             }
             if (++compteur % TAILLE_LOT == 0) {
                 entityManager.flush();
@@ -59,8 +63,9 @@ public class BatchAnticipation {
             }
         }
 
-        log.info("Batch anticipation : {} agent(s) traité(s), {} alerte(s) créée(s), {} ms",
-                compteur, alerteRepository.count() - alertesAvant, System.currentTimeMillis() - debut);
+        int dossiersCrees = dossiers.terminer();
+        log.info("Batch anticipation : {} agent(s) traité(s), {} alerte(s) créée(s), {} dossier(s) créé(s), {} ms",
+                compteur, alerteRepository.count() - alertesAvant, dossiersCrees, System.currentTimeMillis() - debut);
     }
 
     // MODIFIÉ — remplace le seuil unique "resoudreDelai(type):int" + "joursRestants > delai"

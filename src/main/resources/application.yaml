@@ -53,6 +53,10 @@ anticipation:
     "U88L":
       "1C4E": "PR1E"
 
+dossiers:
+  date-reprise: "2026-01-01"
+  relance-apres-jours: 30
+
 server:
   port: 8080
   error:

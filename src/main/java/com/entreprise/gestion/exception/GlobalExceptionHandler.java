@@ -28,6 +28,13 @@ public class GlobalExceptionHandler {
         ));
     }
 
+    @ExceptionHandler(org.springframework.dao.OptimisticLockingFailureException.class)
+    public ResponseEntity<Map<String, String>> handleConflit(org.springframework.dao.OptimisticLockingFailureException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
+                "code", "DOSSIER_MODIFIE",
+                "message", "Ces données viennent d'être modifiées par quelqu'un d'autre. Actualisez la liste puis recommencez."));
+    }
+
     // ─── Authentification ────────────────────────────────────────────────────
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<Map<String, String>> handleBadCredentials(BadCredentialsException ex) {
