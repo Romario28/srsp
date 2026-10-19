@@ -12,14 +12,17 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class RegleDossierTest {
     private final LocalDate auj=LocalDate.of(2026,10,16);
-    private static Dossier dossier(LocalDate preparation){return Dossier.builder().type(TypeAnticipation.AVANCEMENT).datePreparation(preparation).dateEcheance(preparation.plusMonths(3)).build();}
+    private static Dossier dossier(LocalDate preparation){return dossier(preparation,preparation.plusMonths(3));}
+    private static Dossier dossier(LocalDate preparation,LocalDate echeance){return Dossier.builder().type(TypeAnticipation.AVANCEMENT).datePreparation(preparation).dateEcheance(echeance).build();}
     private void refuse(Dossier d,String code){assertThatThrownBy(()->RegleDossier.verifier(d,auj)).isInstanceOfSatisfying(BusinessException.class,e->assertThat(e.getCode()).isEqualTo(code));}
     @Test void statutSuitLesEtapes(){
         Dossier d=dossier(auj.minusDays(5));assertThat(RegleDossier.statutSelonEtapes(d)).isEqualTo(StatutDossier.EN_ATTENTE_DE_TRAITEMENT);
         d.setDateChefAvantFop(auj.minusDays(2));assertThat(RegleDossier.statutSelonEtapes(d)).isEqualTo(StatutDossier.EN_COURS);
         d.setDateFin(auj.minusDays(1));assertThat(RegleDossier.statutSelonEtapes(d)).isEqualTo(StatutDossier.TRAITE);
     }
-    @Test void enRetardSiNonDemarreEtPreparationDepassee(){assertThat(RegleDossier.enRetard(dossier(auj.minusDays(1)),auj)).isTrue();assertThat(RegleDossier.enRetard(dossier(auj),auj)).isFalse();}
+    @Test void enRetardSiNonDemarreEtEcheanceDepassee(){assertThat(RegleDossier.enRetard(dossier(auj.minusMonths(4),auj.minusDays(1)),auj)).isTrue();}
+    @Test void leJourDeLEcheanceLeDossierEstEncoreATraiter(){assertThat(RegleDossier.enRetard(dossier(auj.minusMonths(3),auj),auj)).isFalse();}
+    @Test void preparationDepasseeMaisEcheanceAVenirNEstPasEnRetard(){assertThat(RegleDossier.enRetard(dossier(auj.minusDays(10),auj.plusMonths(2)),auj)).isFalse();}
     @Test void unDossierEnCoursNEstJamaisEnRetard(){Dossier d=dossier(auj.minusMonths(6));d.setDateChefAvantFop(auj.minusMonths(5));d.setStatut(StatutDossier.EN_COURS);assertThat(RegleDossier.enRetard(d,auj)).isFalse();}
     @Test void aRelancerSiEnCoursSansNouvelleDepuisPlusDeNJours(){
         Dossier d=dossier(auj.minusMonths(3));d.setDateChefAvantFop(auj.minusDays(40));d.setStatut(StatutDossier.EN_COURS);

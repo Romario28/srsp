@@ -1,3 +1,7 @@
 package com.entreprise.gestion.dto.dossier;
+
 import java.time.LocalDate;
-public record SyntheseDossiersDTO(long enAttente,long enCours,long enRetard,long aRelancer,long termines,LocalDate dateReprise,int relanceApresJours) {}
+
+/** Un compteur par onglet. aRelancer est un sous-ensemble de enCours (badge, pas un onglet). */
+public record SyntheseDossiersDTO(long aTraiter, long enRetard, long enCours, long traites, long sansSuite,
+                                  long aRelancer, LocalDate dateReprise, int relanceApresJours) {}

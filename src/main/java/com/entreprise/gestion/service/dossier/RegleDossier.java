@@ -14,8 +14,9 @@ public final class RegleDossier {
         if(d.getDateChefAvantFop()!=null)return StatutDossier.EN_COURS;
         return StatutDossier.EN_ATTENTE_DE_TRAITEMENT;
     }
+    /** Le jour de l'échéance reste à traiter ; un dossier démarré n'est jamais en retard. */
     public static boolean enRetard(Dossier d,LocalDate aujourd) {
-        return d.getStatut()==StatutDossier.EN_ATTENTE_DE_TRAITEMENT && d.getDatePreparation().isBefore(aujourd);
+        return d.getStatut()==StatutDossier.EN_ATTENTE_DE_TRAITEMENT && d.getDateEcheance().isBefore(aujourd);
     }
     public static LocalDate derniereEtape(Dossier d) {
         LocalDate last=null;

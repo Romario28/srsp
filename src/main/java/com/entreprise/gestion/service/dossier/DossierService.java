@@ -12,6 +12,7 @@ import com.entreprise.gestion.service.anticipation.FiltreAgents;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
@@ -27,19 +28,20 @@ public class DossierService {
     private final AuditService auditService;
 
     @Transactional(readOnly=true)
-    public Page<DossierDTO> lister(VueDossier vue,TypeAnticipation type,String matricule,FiltreAgents filtre,int page,int size) {
-        LocalDate aujourd=LocalDate.now(),seuil=aujourd.minusDays(proprietes.getRelanceApresJours());
-        return dossierRepository.rechercher(vue.statuts(),type,matricule,vue==VueDossier.EN_RETARD,vue==VueDossier.A_RELANCER,
-                aujourd,seuil,filtre==null?FiltreAgents.AUCUN:filtre,PageRequest.of(Math.max(page,0),Math.min(Math.max(size,1),200)))
+    public Page<DossierDTO> lister(VueDossier vue,boolean inverse,TypeAnticipation type,String matricule,FiltreAgents filtre,int page,int size) {
+        LocalDate aujourd=LocalDate.now();
+        Pageable pageable=PageRequest.of(Math.max(page,0),Math.min(Math.max(size,1),200),vue.tri(inverse));
+        return dossierRepository.rechercher(vue.statuts(),type,matricule,vue.bornes(aujourd),
+                filtre==null?FiltreAgents.AUCUN:filtre,pageable)
                 .map(d->vers(d,aujourd));
     }
     @Transactional(readOnly=true)
     public SyntheseDossiersDTO synthese() {
         LocalDate aujourd=LocalDate.now();
-        return new SyntheseDossiersDTO(dossierRepository.countByStatut(StatutDossier.EN_ATTENTE_DE_TRAITEMENT),
-                dossierRepository.countByStatut(StatutDossier.EN_COURS),dossierRepository.compterEnRetard(aujourd),
+        return new SyntheseDossiersDTO(dossierRepository.compterATraiter(aujourd),
+                dossierRepository.compterEnRetard(aujourd),dossierRepository.countByStatut(StatutDossier.EN_COURS),
+                dossierRepository.countByStatut(StatutDossier.TRAITE),dossierRepository.countByStatut(StatutDossier.SANS_SUITE),
                 dossierRepository.compterARelancer(aujourd.minusDays(proprietes.getRelanceApresJours())),
-                dossierRepository.countByStatut(StatutDossier.TRAITE)+dossierRepository.countByStatut(StatutDossier.SANS_SUITE),
                 proprietes.getDateReprise(),proprietes.getRelanceApresJours());
     }
     @Transactional

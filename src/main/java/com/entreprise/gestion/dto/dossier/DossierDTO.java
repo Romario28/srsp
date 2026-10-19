@@ -19,7 +19,7 @@ public record DossierDTO(Long id,Long version,String matricule,String nomComplet
         return new DossierDTO(d.getId(),d.getVersion(),a.getMatricule(),a.getPrenoms()+" "+a.getNom(),a.getStatut(),
                 a.getCorps()==null?null:a.getCorps().getCode(),a.getCorps()==null?null:a.getCorps().getCategorie(),
                 a.getGrade()==null?null:a.getGrade().getCode(),d.getType(),d.getDatePreparation(),d.getDateEcheance(),etapes,d.getStatut(),d.getMotifSansSuite(),
-                retard,retard?ChronoUnit.DAYS.between(d.getDatePreparation(),aujourd):null,relance,
+                retard,retard?ChronoUnit.DAYS.between(d.getDateEcheance(),aujourd):null,relance,
                 relance&&derniere!=null?ChronoUnit.DAYS.between(derniere,aujourd):null);
     }
 }

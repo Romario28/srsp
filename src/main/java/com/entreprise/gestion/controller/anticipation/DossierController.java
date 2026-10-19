@@ -19,9 +19,10 @@ public class DossierController {
     private final DossierService dossierService;
     @GetMapping
     public ResponseEntity<Page<DossierDTO>> lister(@RequestParam(defaultValue="A_TRAITER") VueDossier vue,
+            @RequestParam(defaultValue="false") boolean inverse,
             @RequestParam(required=false) TypeAnticipation type,@RequestParam(required=false) String matricule,
             @ModelAttribute FiltreAgents filtre,@RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="50") int size) {
-        return ResponseEntity.ok(dossierService.lister(vue,type,matricule==null||matricule.isBlank()?null:matricule.trim(),filtre,page,size));
+        return ResponseEntity.ok(dossierService.lister(vue,inverse,type,matricule==null||matricule.isBlank()?null:matricule.trim(),filtre,page,size));
     }
     @GetMapping("/synthese") public ResponseEntity<SyntheseDossiersDTO> synthese(){return ResponseEntity.ok(dossierService.synthese());}
     @PutMapping("/{id}/etapes") public ResponseEntity<DossierDTO> etapes(@PathVariable Long id,@Valid @RequestBody EtapesRequest req,@AuthenticationPrincipal UserDetailsImpl principal){
