@@ -1,6 +1,7 @@
 package com.entreprise.gestion.service.dossier;
 
 import com.entreprise.gestion.entite.anticipation.Dossier;
+import com.entreprise.gestion.entite.anticipation.EtapeDossier;
 import com.entreprise.gestion.entite.anticipation.StatutDossier;
 import com.entreprise.gestion.entite.anticipation.TypeAnticipation;
 import com.entreprise.gestion.service.dossier.EtatDossier;
@@ -30,6 +31,19 @@ class RegleDossierTest {
         assertThat(RegleDossier.etat(StatutDossier.EN_COURS,auj.minusMonths(2),auj)).isEqualTo(EtatDossier.EN_COURS);
         assertThat(RegleDossier.etat(StatutDossier.TRAITE,auj.minusMonths(2),auj)).isEqualTo(EtatDossier.TRAITE);
         assertThat(RegleDossier.etat(StatutDossier.SANS_SUITE,auj.minusMonths(2),auj)).isEqualTo(EtatDossier.SANS_SUITE);
+    }
+    @Test void uneDateAvantLaPreparationEstRefusee(){
+        Dossier d=dossier(auj.minusDays(10));
+        assertThatThrownBy(()->RegleDossier.exigerApresPreparation(EtapeDossier.CHEF_AVANT_FOP,auj.minusDays(11),d))
+                .isInstanceOfSatisfying(BusinessException.class,e->assertThat(e.getCode()).isEqualTo("DATE_AVANT_PREPARATION"));
+    }
+    @Test void laDateDePreparationEtLesSuivantesSontAcceptees(){
+        Dossier d=dossier(auj.minusDays(10));
+        assertThatCode(()->RegleDossier.exigerApresPreparation(EtapeDossier.CHEF_AVANT_FOP,auj.minusDays(10),d)).doesNotThrowAnyException();
+        assertThatCode(()->RegleDossier.exigerApresPreparation(EtapeDossier.VISA,auj.minusDays(2),d)).doesNotThrowAnyException();
+    }
+    @Test void effacerUneDateNEstJamaisRefuse(){
+        assertThatCode(()->RegleDossier.exigerApresPreparation(EtapeDossier.FIN,null,dossier(auj.minusDays(10)))).doesNotThrowAnyException();
     }
     @Test void unDossierEnCoursNEstJamaisEnRetard(){Dossier d=dossier(auj.minusMonths(6));d.setDateChefAvantFop(auj.minusMonths(5));d.setStatut(StatutDossier.EN_COURS);assertThat(RegleDossier.enRetard(d,auj)).isFalse();}
     @Test void aRelancerSiEnCoursSansNouvelleDepuisPlusDeNJours(){

@@ -26,6 +26,13 @@ public final class RegleDossier {
     public static boolean enRetard(Dossier d,LocalDate aujourd) {
         return etat(d.getStatut(),d.getDateEcheance(),aujourd)==EtatDossier.EN_RETARD;
     }
+    /** Aucune date d'étape ne peut précéder la date de préparation du dossier. null (effacement) toujours permis. */
+    public static void exigerApresPreparation(EtapeDossier etape,LocalDate date,Dossier d) {
+        if(date!=null&&date.isBefore(d.getDatePreparation())) {
+            throw new BusinessException("DATE_AVANT_PREPARATION","« "+etape.libelle()+" » : la date "+fmt(date)
+                    +" précède la date de préparation du dossier ("+fmt(d.getDatePreparation())+").");
+        }
+    }
     public static LocalDate derniereEtape(Dossier d) {
         LocalDate last=null;
         for(EtapeDossier e:EtapeDossier.values()){LocalDate v=e.de(d);if(v!=null&&(last==null||v.isAfter(last)))last=v;}

@@ -69,6 +69,7 @@ public class DossierService {
         for(EtapeDossier e:EtapeDossier.values()) {
             if(!demandees.containsKey(e))continue;
             LocalDate ancien=e.de(d),nouveau=demandees.get(e); if(Objects.equals(ancien,nouveau))continue;
+            RegleDossier.exigerApresPreparation(e,nouveau,d);
             e.definir(d,nouveau); changements.add(e.libelle()+" : "+fmt(ancien)+" → "+fmt(nouveau));
         }
         if(!changements.isEmpty()) {
@@ -91,6 +92,7 @@ public class DossierService {
             if(d.getStatut()==StatutDossier.SANS_SUITE){refuses.add(new Refus(id,libelle,"classé sans suite : à rouvrir d'abord"));continue;}
             LocalDate ancien=etape.de(d); if(date.equals(ancien)){inchanges++;continue;}
             if(ancien!=null&&!ecraser){refuses.add(new Refus(id,libelle,"« "+etape.libelle()+" » déjà renseignée au "+fmt(ancien)+" (cochez « Remplacer les dates déjà saisies » pour la modifier)"));continue;}
+            try{RegleDossier.exigerApresPreparation(etape,date,d);}catch(BusinessException ex){refuses.add(new Refus(id,libelle,ex.getMessage()));continue;}
             StatutDossier avant=d.getStatut(); etape.definir(d,date);
             try{RegleDossier.verifier(d,aujourd);}catch(BusinessException ex){etape.definir(d,ancien);refuses.add(new Refus(id,libelle,ex.getMessage()));continue;}
             d.setStatut(RegleDossier.statutSelonEtapes(d)); modifies++;
