@@ -7,9 +7,13 @@ import com.entreprise.gestion.repository.anticipation.AlerteRepository;
 import com.entreprise.gestion.repository.referentiel.AgentRepository;
 import com.entreprise.gestion.entite.anticipation.Alerte;
 import com.entreprise.gestion.entite.anticipation.StatutAlerte;
+import com.entreprise.gestion.entite.anticipation.EtapeDossier;
 import com.entreprise.gestion.service.AuditService;
 import com.entreprise.gestion.service.VisibiliteService;
 import com.entreprise.gestion.service.anticipation.*;
+import com.entreprise.gestion.service.dossier.CleDossier;
+import com.entreprise.gestion.service.dossier.DossierResume;
+import com.entreprise.gestion.service.dossier.SuiviDossiers;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.streaming.SXSSFWorkbook;
 import org.springframework.security.access.AccessDeniedException;
@@ -24,17 +28,19 @@ import java.util.*;
 @Service
 public class ExportService {
     private static final List<String> BASE = List.of("POSTE_AGENT_NUMERO","AGENT_MATRICULE","AGENT_NOM","AGENT_PRENOMS","AGENT_DATE_NAIS","AGENT_CIN","AGENT_SEXE","STATUT","CORPS_CODE","GRADE_CODE","CATEGORIE","INDICE","HEE_CODE","HEE_CATEGORIE_CODE","SECTION_CODE","FIV_CODE","SANCTION_CODE","SOA","POSTE_AGENT_DATE_DEBUT_CONTRAT","POSTE_AGENT_DATE_FIN_CONTRAT","AVANCE_DATE","REG_CODE","MIN_CODE");
+    private static final List<String> DOSSIER=entetesDossier();
     private final AnticipationService anticipation;
     private final CalendrierService calendrier;
     private final VisibiliteService visibilite;
     private final AuditService audit;
     private final AlerteRepository alerteRepository;
     private final AgentRepository agentRepository;
+    private final SuiviDossiers suiviDossiers;
 
     public ExportService(AnticipationService anticipation, CalendrierService calendrier, VisibiliteService visibilite, AuditService audit,
-                         AlerteRepository alerteRepository, AgentRepository agentRepository) {
+                         AlerteRepository alerteRepository, AgentRepository agentRepository,SuiviDossiers suiviDossiers) {
         this.anticipation=anticipation; this.calendrier=calendrier; this.visibilite=visibilite; this.audit=audit;
-        this.alerteRepository=alerteRepository; this.agentRepository=agentRepository;
+        this.alerteRepository=alerteRepository; this.agentRepository=agentRepository; this.suiviDossiers=suiviDossiers;
     }
 
     @Transactional(readOnly = true)
@@ -44,38 +50,56 @@ public class ExportService {
         List<String> extra = new ArrayList<>();
         String periode = d.dateDebut()==null ? "tout" : d.dateDebut().toString() + (d.dateFin()==null?"":"_au_"+d.dateFin());
         FiltreAgents filtre = d.filtre()==null ? FiltreAgents.AUCUN : d.filtre();
+        LocalDate aujourd=LocalDate.now();
+        boolean avecDossier=d.ecran()!=Ecran.ANOMALIES;
         if (d.ecran()==Ecran.ALERTES) {
             extra.addAll(List.of("TYPE_ALERTE","DATE_PREPARATION","DATE_ECHEANCE","STATUT_ALERTE","DATE_DETECTION","DATE_ACQUITTEMENT","ACQUITTEE_PAR"));
             List<Alerte> alertes=alerteRepository.rechercher(d.type(),d.statutAlerte(),d.matricule(),filtre,Pageable.unpaged()).getContent();
             Map<String,Agent> agents=new HashMap<>();
             List<String> matricules=alertes.stream().map(Alerte::getMatriculeAgent).distinct().toList();
             for(int i=0;i<matricules.size();i+=500) agentRepository.findAvecReferences(matricules.subList(i,Math.min(i+500,matricules.size()))).forEach(a->agents.put(a.getMatricule(),a));
+            Map<CleDossier,DossierResume> dossiers=suiviDossiers.de(matricules);
             for(Alerte a:alertes) {
                 Object[] vals={a.getType().name(),a.getDatePreparation(),a.getDateEcheance(),a.getStatut().name(),a.getDateDetection(),a.getDateAcquittement(),a.getAcquitteePar()==null?null:a.getAcquitteePar().getEmail()};
+                DossierResume dossier=a.getDateEcheance()==null?null:dossiers.get(new CleDossier(a.getMatriculeAgent(),a.getType(),a.getDateEcheance()));
+                Object[] valeurs=ajouterDossier(vals,dossier,aujourd);
                 Agent agent=agents.get(a.getMatriculeAgent());
-                if(agent!=null) lignes.add(ligneBase(agent,vals));
-                else { Object[] base=new Object[BASE.size()+vals.length]; base[1]=a.getMatriculeAgent(); System.arraycopy(vals,0,base,BASE.size(),vals.length); lignes.add(base); }
+                if(agent!=null) lignes.add(ligneBase(agent,valeurs));
+                else { Object[] base=new Object[BASE.size()+valeurs.length]; base[1]=a.getMatriculeAgent(); System.arraycopy(valeurs,0,base,BASE.size(),valeurs.length); lignes.add(base); }
             }
         } else if (d.ecran()==Ecran.INTEGRATION) {
             extra.addAll(List.of("DATE_PREPARATION","DATE_INTEGRATION","DATE_DEBUT_CONTRAT","STATUT_ACTUEL"));
             anticipation.echeancesAvecAgent(TypeAnticipation.INTEGRATION,d.prevenanceMois(),d.retardMois(),d.dateDebut(),d.dateFin(),d.critereDate(),filtre)
-                    .forEach(ae -> lignes.add(ligneBase(ae.agent(), ae.ligne().datePreparation(), ae.ligne().dateEcheance(),
-                            ae.agent().getDateDebutContrat(), ae.agent().getStatut()==null?null:ae.agent().getStatut().name())));
+                    .forEach(ae -> lignes.add(ligneBase(ae.agent(),ajouterDossier(new Object[]{ae.ligne().datePreparation(),ae.ligne().dateEcheance(),
+                            ae.agent().getDateDebutContrat(),ae.agent().getStatut()==null?null:ae.agent().getStatut().name()},ae.dossier(),aujourd))));
         } else if (d.ecran()==Ecran.ANOMALIES) {
             extra.addAll(List.of("TYPE_ANOMALIE","DETAILS"));
             anticipation.anomaliesAvecAgent(filtre).forEach(ae -> lignes.add(ligneBase(ae.agent(), ae.echeance().typeAnomalie()==null?null:ae.echeance().typeAnomalie().libelle(), ae.echeance().details())));
         } else if (d.ecran()==Ecran.CALENDRIER) {
             extra.addAll(List.of("TYPE","DATE_PREPARATION","DATE_ECHEANCE"));
-            calendrier.pourExport(d.dateDebut(), d.dateFin(), d.critereDate(), d.typesCalendrier(), filtre).forEach(p -> lignes.add(ligneBase(p.agent(),p.categorie().name(),p.datePreparation(),p.dateEcheance())));
+            calendrier.pourExport(d.dateDebut(),d.dateFin(),d.critereDate(),d.typesCalendrier(),filtre).forEach(p->lignes.add(ligneBase(p.agent(),
+                    ajouterDossier(new Object[]{p.categorie().name(),p.datePreparation(),p.dateEcheance()},p.dossier(),aujourd))));
         } else {
             TypeAnticipation type = switch(d.ecran()) { case RETRAITE -> TypeAnticipation.DEPART_RETRAITE; case AVANCEMENT -> TypeAnticipation.AVANCEMENT; case TITULARISATION -> TypeAnticipation.TITULARISATION; case FIN_CONTRAT -> TypeAnticipation.FIN_CONTRAT; default -> throw new IllegalArgumentException("Écran non pris en charge"); };
             extra.addAll(List.of("DATE_PREPARATION","DATE_ECHEANCE","DETAILS"));
             anticipation.echeancesAvecAgent(type,d.prevenanceMois(),d.retardMois(),d.dateDebut(),d.dateFin(),d.critereDate(),filtre)
-                    .forEach(ae -> lignes.add(ligneBase(ae.agent(),ae.ligne().datePreparation(),ae.ligne().dateEcheance(),ae.ligne().details())));
+                    .forEach(ae -> lignes.add(ligneBase(ae.agent(),ajouterDossier(new Object[]{ae.ligne().datePreparation(),ae.ligne().dateEcheance(),ae.ligne().details()},ae.dossier(),aujourd))));
         }
+        if(avecDossier)extra.addAll(DOSSIER);
         String nom = d.ecran().slug()+"_"+periode+"_"+LocalDate.now()+".xlsx";
         audit.logAvecEntite(acteur.getUtilisateur(),"EXPORT_EXCEL","Export « "+d.ecran().libelle()+" » : "+lignes.size()+" ligne(s), fichier "+nom,ip);
         return new Fichier(nom,lignes,extra);
+    }
+
+    private static List<String> entetesDossier(){
+        List<String> h=new ArrayList<>();h.add("DOSSIER_STATUT");
+        for(EtapeDossier e:EtapeDossier.values())h.add("DOSSIER_"+e.name());
+        h.add("DOSSIER_MOTIF_SANS_SUITE");return List.copyOf(h);
+    }
+    private static Object[] ajouterDossier(Object[] specifiques,DossierResume dossier,LocalDate aujourd){
+        Object[] v=new Object[DOSSIER.size()];
+        if(dossier!=null){int i=0;v[i++]=dossier.etat(aujourd).libelle();for(EtapeDossier e:EtapeDossier.values())v[i++]=dossier.etape(e);v[i]=dossier.motifSansSuite();}
+        Object[] all=Arrays.copyOf(specifiques,specifiques.length+v.length);System.arraycopy(v,0,all,specifiques.length,v.length);return all;
     }
 
     private static Object[] ligneBase(Agent a,Object... extra) {

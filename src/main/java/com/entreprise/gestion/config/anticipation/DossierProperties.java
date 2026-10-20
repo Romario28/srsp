@@ -14,7 +14,7 @@ import java.util.Set;
 @Getter @Setter
 public class DossierProperties {
     private LocalDate dateReprise;
-    private int relanceApresJours=30;
+    private int relanceApresJours=7;
     private Set<TypeAnticipation> typesSuivis=EnumSet.of(TypeAnticipation.DEPART_RETRAITE,TypeAnticipation.AVANCEMENT,
             TypeAnticipation.TITULARISATION,TypeAnticipation.FIN_CONTRAT,TypeAnticipation.INTEGRATION);
 }

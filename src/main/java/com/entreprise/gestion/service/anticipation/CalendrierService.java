@@ -7,6 +7,9 @@ import com.entreprise.gestion.entite.anticipation.CategorieCalendrier;
 import com.entreprise.gestion.entite.anticipation.TypeAnticipation;
 import com.entreprise.gestion.exception.BusinessException;
 import com.entreprise.gestion.repository.referentiel.AgentRepository;
+import com.entreprise.gestion.service.dossier.CleDossier;
+import com.entreprise.gestion.service.dossier.DossierResume;
+import com.entreprise.gestion.service.dossier.SuiviDossiers;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,13 +37,14 @@ public class CalendrierService {
     private final MoteurAnticipation moteur;
     private final ConfigurationDelaiService configurationDelaiService;
     private final GradeSuivantService gradeSuivantService;
+    private final SuiviDossiers suiviDossiers;
 
     private record Placee(Agent agent, Echeance echeance, CategorieCalendrier categorie, FenetreAnticipation fenetre) {
         LocalDate datePreparation() { return fenetre.datePreparation(echeance.dateEcheance()); }
         LocalDate dateEcheance() { return echeance.dateEcheance(); }
     }
     private record Cle(LocalDate datePreparation, LocalDate dateEcheance, CategorieCalendrier categorie) {}
-    public record EcheancePlacee(Agent agent, CategorieCalendrier categorie, LocalDate datePreparation, LocalDate dateEcheance) {}
+    public record EcheancePlacee(Agent agent,CategorieCalendrier categorie,LocalDate datePreparation,LocalDate dateEcheance,DossierResume dossier) {}
 
     /**
      * Une année du calendrier, en un seul parcours des agents : toutes les échéances dont la date de
@@ -88,6 +92,7 @@ public class CalendrierService {
         if (ChronoUnit.DAYS.between(debut, fin) > MAX_JOURS_EXPORT)
             throw new BusinessException("PERIODE_TROP_LONGUE", "La période ne peut pas dépasser une année.");
         boolean preparation = (critere != null ? critere : CritereDate.PREPARATION) == CritereDate.PREPARATION;
+        Map<CleDossier,DossierResume> dossiers=suiviDossiers.tous();
         return placees(filtre).filter(p -> {
                     LocalDate d = preparation ? p.datePreparation() : p.dateEcheance();
                     return !d.isBefore(debut) && !d.isAfter(fin);
@@ -95,7 +100,7 @@ public class CalendrierService {
                 .sorted(Comparator.comparing(Placee::categorie)
                         .thenComparing(preparation ? Placee::datePreparation : Placee::dateEcheance)
                         .thenComparing(p -> p.echeance().nomComplet()))
-                .map(p -> new EcheancePlacee(p.agent(), p.categorie(), p.datePreparation(), p.dateEcheance())).toList();
+                .map(p -> new EcheancePlacee(p.agent(),p.categorie(),p.datePreparation(),p.dateEcheance(),dossiers.get(cle(p)))).toList();
     }
 
     /** Agents dont la date retenue (préparation ou échéance) tombe dans [debut ; fin], bornes incluses. */
@@ -105,16 +110,20 @@ public class CalendrierService {
         Function<Placee, LocalDate> dateRetenue = surPreparation ? Placee::datePreparation : Placee::dateEcheance;
         Function<EcheanceAnticipeeDTO, LocalDate> dateDeTri =
                 surPreparation ? EcheanceAnticipeeDTO::datePreparation : EcheanceAnticipeeDTO::dateEcheance;
-        GradesParCorps grades = gradeSuivantService.indexer();   // une requête par appel
+        GradesParCorps grades = gradeSuivantService.indexer();
+        Map<CleDossier,DossierResume> dossiers=suiviDossiers.tous();
+        LocalDate aujourd=LocalDate.now();
 
         return placees(filtre)
                 .filter(p -> {
                     LocalDate d = dateRetenue.apply(p);
                     return !d.isBefore(debut) && !d.isAfter(fin);
                 })
-                .map(p -> new CalendrierAgentDTO(p.categorie(), EcheanceAnticipeeDTO.de(
-                        p.agent(), p.echeance(), p.fenetre(),
-                        changeDeGrade(p.echeance().type()) ? grades : null)))
+                .map(p -> {
+                    DossierResume dossier=dossiers.get(cle(p));
+                    return new CalendrierAgentDTO(p.categorie(),EcheanceAnticipeeDTO.de(p.agent(),p.echeance(),p.fenetre(),
+                            changeDeGrade(p.echeance().type())?grades:null,dossier==null?null:dossier.etat(aujourd)));
+                })
                 .sorted(Comparator.comparing(CalendrierAgentDTO::categorie)
                         .thenComparing(d -> dateDeTri.apply(d.echeance()))
                         .thenComparing(d -> d.echeance().nomComplet()))
@@ -130,6 +139,10 @@ public class CalendrierService {
 
     private static boolean changeDeGrade(TypeAnticipation type) {
         return type == TypeAnticipation.AVANCEMENT || type == TypeAnticipation.TITULARISATION;
+    }
+
+    private static CleDossier cle(Placee p) {
+        return new CleDossier(p.agent().getMatricule(),p.echeance().type(),p.dateEcheance());
     }
 
     /** Échéances datées des agents en activité qui passent le filtre (les anomalies n'ont pas de date). */

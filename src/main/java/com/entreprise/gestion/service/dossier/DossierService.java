@@ -36,13 +36,17 @@ public class DossierService {
                 .map(d->vers(d,aujourd));
     }
     @Transactional(readOnly=true)
-    public SyntheseDossiersDTO synthese() {
+    public SyntheseDossiersDTO synthese(TypeAnticipation type,String matricule,FiltreAgents filtre) {
         LocalDate aujourd=LocalDate.now();
-        return new SyntheseDossiersDTO(dossierRepository.compterATraiter(aujourd),
-                dossierRepository.compterEnRetard(aujourd),dossierRepository.countByStatut(StatutDossier.EN_COURS),
-                dossierRepository.countByStatut(StatutDossier.TRAITE),dossierRepository.countByStatut(StatutDossier.SANS_SUITE),
-                dossierRepository.compterARelancer(aujourd.minusDays(proprietes.getRelanceApresJours())),
+        FiltreAgents f=filtre==null?FiltreAgents.AUCUN:filtre;
+        return new SyntheseDossiersDTO(compter(VueDossier.A_TRAITER,type,matricule,f,aujourd),
+                compter(VueDossier.EN_RETARD,type,matricule,f,aujourd),compter(VueDossier.EN_COURS,type,matricule,f,aujourd),
+                compter(VueDossier.TRAITES,type,matricule,f,aujourd),compter(VueDossier.SANS_SUITE,type,matricule,f,aujourd),
+                dossierRepository.compterARelancer(aujourd.minusDays(proprietes.getRelanceApresJours()),type,matricule,f),
                 proprietes.getDateReprise(),proprietes.getRelanceApresJours());
+    }
+    private long compter(VueDossier vue,TypeAnticipation type,String matricule,FiltreAgents filtre,LocalDate aujourd) {
+        return dossierRepository.compter(vue.statuts(),type,matricule,vue.bornes(aujourd),filtre);
     }
     @Transactional
     public DossierDTO mettreAJourEtapes(Long id,Long version,Map<EtapeDossier,LocalDate> demandees,UserDetailsImpl acteur) {

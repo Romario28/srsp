@@ -3,6 +3,7 @@ package com.entreprise.gestion.service.anticipation;
 import com.entreprise.gestion.entite.anticipation.Agent;
 import com.entreprise.gestion.entite.anticipation.StatutAgent;
 import com.entreprise.gestion.entite.anticipation.TypeAnticipation;
+import com.entreprise.gestion.service.dossier.EtatDossier;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 
@@ -22,9 +23,14 @@ public record EcheanceAnticipeeDTO(
         LocalDate dateFinContrat,     // vérification FIN_CONTRAT
         String corpsCode,
         String gradeCode,  //dernier situation
-        String categorieCode
+        String categorieCode,
+        EtatDossier dossier
 ) {
-    public static EcheanceAnticipeeDTO de(Agent a, Echeance e, FenetreAnticipation fenetre, GradesParCorps grades) {
+    public static EcheanceAnticipeeDTO de(Agent a,Echeance e,FenetreAnticipation fenetre,GradesParCorps grades) {
+        return de(a,e,fenetre,grades,null);
+    }
+
+    public static EcheanceAnticipeeDTO de(Agent a,Echeance e,FenetreAnticipation fenetre,GradesParCorps grades,EtatDossier dossier) {
         long jours = e.dateEcheance() != null
                 ? ChronoUnit.DAYS.between(LocalDate.now(), e.dateEcheance())
                 : 0;
@@ -47,7 +53,8 @@ public record EcheanceAnticipeeDTO(
                 a.getDateFinContrat(),
                 a.getCorps() != null ? a.getCorps().getCode() : null,
                 a.getGrade() != null ? a.getGrade().getCode() : null,
-                a.getCorps() != null ? a.getCorps().getCategorie() : null
+                a.getCorps() != null ? a.getCorps().getCategorie() : null,
+                dossier
         );
     }
 }

@@ -55,7 +55,7 @@ anticipation:
 
 dossiers:
   date-reprise: "2026-01-01"
-  relance-apres-jours: 30
+  relance-apres-jours: 7
 
 server:
   port: 8080

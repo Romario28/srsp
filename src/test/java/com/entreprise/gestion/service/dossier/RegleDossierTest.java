@@ -3,6 +3,7 @@ package com.entreprise.gestion.service.dossier;
 import com.entreprise.gestion.entite.anticipation.Dossier;
 import com.entreprise.gestion.entite.anticipation.StatutDossier;
 import com.entreprise.gestion.entite.anticipation.TypeAnticipation;
+import com.entreprise.gestion.service.dossier.EtatDossier;
 import com.entreprise.gestion.exception.BusinessException;
 import org.junit.jupiter.api.Test;
 import java.time.LocalDate;
@@ -23,6 +24,13 @@ class RegleDossierTest {
     @Test void enRetardSiNonDemarreEtEcheanceDepassee(){assertThat(RegleDossier.enRetard(dossier(auj.minusMonths(4),auj.minusDays(1)),auj)).isTrue();}
     @Test void leJourDeLEcheanceLeDossierEstEncoreATraiter(){assertThat(RegleDossier.enRetard(dossier(auj.minusMonths(3),auj),auj)).isFalse();}
     @Test void preparationDepasseeMaisEcheanceAVenirNEstPasEnRetard(){assertThat(RegleDossier.enRetard(dossier(auj.minusDays(10),auj.plusMonths(2)),auj)).isFalse();}
+    @Test void etatAffiche(){
+        assertThat(RegleDossier.etat(StatutDossier.EN_ATTENTE_DE_TRAITEMENT,auj,auj)).isEqualTo(EtatDossier.A_TRAITER);
+        assertThat(RegleDossier.etat(StatutDossier.EN_ATTENTE_DE_TRAITEMENT,auj.minusDays(1),auj)).isEqualTo(EtatDossier.EN_RETARD);
+        assertThat(RegleDossier.etat(StatutDossier.EN_COURS,auj.minusMonths(2),auj)).isEqualTo(EtatDossier.EN_COURS);
+        assertThat(RegleDossier.etat(StatutDossier.TRAITE,auj.minusMonths(2),auj)).isEqualTo(EtatDossier.TRAITE);
+        assertThat(RegleDossier.etat(StatutDossier.SANS_SUITE,auj.minusMonths(2),auj)).isEqualTo(EtatDossier.SANS_SUITE);
+    }
     @Test void unDossierEnCoursNEstJamaisEnRetard(){Dossier d=dossier(auj.minusMonths(6));d.setDateChefAvantFop(auj.minusMonths(5));d.setStatut(StatutDossier.EN_COURS);assertThat(RegleDossier.enRetard(d,auj)).isFalse();}
     @Test void aRelancerSiEnCoursSansNouvelleDepuisPlusDeNJours(){
         Dossier d=dossier(auj.minusMonths(3));d.setDateChefAvantFop(auj.minusDays(40));d.setStatut(StatutDossier.EN_COURS);

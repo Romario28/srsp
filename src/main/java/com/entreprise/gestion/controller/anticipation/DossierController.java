@@ -24,7 +24,11 @@ public class DossierController {
             @ModelAttribute FiltreAgents filtre,@RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="50") int size) {
         return ResponseEntity.ok(dossierService.lister(vue,inverse,type,matricule==null||matricule.isBlank()?null:matricule.trim(),filtre,page,size));
     }
-    @GetMapping("/synthese") public ResponseEntity<SyntheseDossiersDTO> synthese(){return ResponseEntity.ok(dossierService.synthese());}
+    @GetMapping("/synthese") public ResponseEntity<SyntheseDossiersDTO> synthese(
+            @RequestParam(required=false) TypeAnticipation type,@RequestParam(required=false) String matricule,
+            @ModelAttribute FiltreAgents filtre) {
+        return ResponseEntity.ok(dossierService.synthese(type,matricule==null||matricule.isBlank()?null:matricule.trim(),filtre));
+    }
     @PutMapping("/{id}/etapes") public ResponseEntity<DossierDTO> etapes(@PathVariable Long id,@Valid @RequestBody EtapesRequest req,@AuthenticationPrincipal UserDetailsImpl principal){
         return ResponseEntity.ok(dossierService.mettreAJourEtapes(id,req.version(),req.etapes(),principal));
     }

@@ -3,7 +3,11 @@ package com.entreprise.gestion.service.anticipation;
 import com.entreprise.gestion.entite.anticipation.Agent;
 import com.entreprise.gestion.entite.anticipation.StatutAgent;
 import com.entreprise.gestion.entite.anticipation.TypeAnticipation;
+import com.entreprise.gestion.entite.anticipation.StatutDossier;
 import com.entreprise.gestion.repository.referentiel.AgentRepository;
+import com.entreprise.gestion.service.dossier.DossierResume;
+import com.entreprise.gestion.service.dossier.EtatDossier;
+import com.entreprise.gestion.service.dossier.SuiviDossiers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -12,6 +16,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
@@ -22,6 +27,7 @@ class AnticipationServiceCritereTest {
     @Mock MoteurAnticipation moteur;
     @Mock ConfigurationDelaiService configurationDelaiService;
     @Mock GradeSuivantService gradeSuivantService;
+    @Mock SuiviDossiers suiviDossiers;
     @InjectMocks AnticipationService service;
 
     private final LocalDate aujourdhui=LocalDate.now();
@@ -32,6 +38,7 @@ class AnticipationServiceCritereTest {
     @BeforeEach void preparer() {
         Agent futur=agent("FUTUR"), passe=agent("PASSE"), courant=agent("COURANT");
         when(configurationDelaiService.resoudreFenetre(TYPE)).thenReturn(new FenetreAnticipation(6,2));
+        when(suiviDossiers.tous()).thenReturn(Map.of());
         when(agentRepository.findAllActifs()).thenReturn(List.of(futur,passe,courant));
         when(moteur.calculerEcheances(futur)).thenReturn(List.of(echeance(futur,echeanceFutur)));
         when(moteur.calculerEcheances(passe)).thenReturn(List.of(echeance(passe,echeancePasse)));
@@ -64,5 +71,19 @@ class AnticipationServiceCritereTest {
         LocalDate debut=prepFutur.minusDays(2),fin=prepFutur.plusDays(2);
         assertThat(matricules(CritereDate.PREPARATION,null,null,debut,fin)).containsExactly("FUTUR");
         assertThat(matricules(CritereDate.ECHEANCE,null,null,debut,fin)).isEmpty();
+    }
+
+    @Test void ligneExposeEtatEtResumeDuDossierLie() {
+        DossierResume lie=new DossierResume("COURANT",TYPE,echeanceCourant,StatutDossier.EN_COURS,
+                aujourdhui.minusDays(3),null,null,null,null,null,null,null,null);
+        when(suiviDossiers.tous()).thenReturn(Map.of(lie.cle(),lie));
+        List<AnticipationService.AgentEcheance> lignes=service.echeancesAvecAgent(TYPE,null,null,null,null,
+                CritereDate.ECHEANCE,FiltreAgents.AUCUN);
+        assertThat(lignes).filteredOn(ae->ae.ligne().matricule().equals("COURANT")).singleElement().satisfies(ae->{
+            assertThat(ae.ligne().dossier()).isEqualTo(EtatDossier.EN_COURS);
+            assertThat(ae.dossier()).isSameAs(lie);
+        });
+        assertThat(lignes).filteredOn(ae->!ae.ligne().matricule().equals("COURANT"))
+                .allSatisfy(ae->assertThat(ae.ligne().dossier()).isNull());
     }
 }

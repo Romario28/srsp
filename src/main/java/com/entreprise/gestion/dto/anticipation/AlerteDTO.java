@@ -4,6 +4,7 @@ import com.entreprise.gestion.entite.anticipation.Alerte;
 import com.entreprise.gestion.entite.anticipation.StatutAlerte;
 import com.entreprise.gestion.entite.anticipation.TypeAnticipation;
 import com.entreprise.gestion.service.anticipation.GradeSuivant;
+import com.entreprise.gestion.service.dossier.EtatDossier;
 import lombok.Builder;
 import lombok.Data;
 
@@ -34,8 +35,13 @@ public class AlerteDTO {
     private LocalDateTime dateAcquittement;
     /** Email de l'utilisateur ayant acquitté, ou null si non acquittée. */
     private String acquitteeParEmail;
+    private EtatDossier dossier;
 
     public static AlerteDTO from(Alerte a) {
+        return from(a,null);
+    }
+
+    public static AlerteDTO from(Alerte a,EtatDossier dossier) {
         return AlerteDTO.builder()
                 .id(a.getId())
                 .matriculeAgent(a.getMatriculeAgent())
@@ -52,6 +58,7 @@ public class AlerteDTO {
                 .dateDerniereConsultation(a.getDateDerniereConsultation())
                 .dateAcquittement(a.getDateAcquittement())
                 .acquitteeParEmail(a.getAcquitteePar() != null ? a.getAcquitteePar().getEmail() : null)
+                .dossier(dossier)
                 .build();
 
 

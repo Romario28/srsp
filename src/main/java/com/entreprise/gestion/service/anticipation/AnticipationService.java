@@ -5,6 +5,10 @@ import com.entreprise.gestion.entite.anticipation.TypeAnticipation;
 import com.entreprise.gestion.dto.anticipation.AgentFicheDTO;
 import com.entreprise.gestion.exception.BusinessException; // AJOUTÉ
 import com.entreprise.gestion.repository.referentiel.AgentRepository;
+import com.entreprise.gestion.service.dossier.CleDossier;
+import com.entreprise.gestion.service.dossier.DossierResume;
+import com.entreprise.gestion.service.dossier.EtatDossier;
+import com.entreprise.gestion.service.dossier.SuiviDossiers;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -22,6 +27,7 @@ public class AnticipationService {
     private final MoteurAnticipation moteur;
     private final ConfigurationDelaiService configurationDelaiService;
     private final GradeSuivantService gradeSuivantService;
+    private final SuiviDossiers suiviDossiers;
 
     /** Nombre total d'agents importés, quel que soit leur statut administratif. */
     @Transactional(readOnly = true)
@@ -83,7 +89,7 @@ public class AnticipationService {
         return lignes(anomaliesAvecAgent(filtre));
     }
 
-    public record AgentEcheance(Agent agent, Echeance echeance, EcheanceAnticipeeDTO ligne) {}
+    public record AgentEcheance(Agent agent, Echeance echeance, EcheanceAnticipeeDTO ligne, DossierResume dossier) {}
 
     @Transactional(readOnly = true)
     public List<AgentEcheance> anomaliesAvecAgent(FiltreAgents filtre) {
@@ -91,7 +97,7 @@ public class AnticipationService {
                 .filter(filtre::accepte)
                 .flatMap(a -> moteur.calculerEcheances(a).stream()
                         .filter(e -> e.type() == TypeAnticipation.ANOMALIE)
-                        .map(e -> new AgentEcheance(a, e, versAlerte(a, e, null, null))))
+                        .map(e -> new AgentEcheance(a, e, versAlerte(a, e, null, null, null), null)))
                 .collect(Collectors.toList());
     }
 
@@ -125,9 +131,14 @@ public class AnticipationService {
                 ? configurationDelaiService.resoudreFenetre(type) : fenetre;
         GradesParCorps grades = type == TypeAnticipation.AVANCEMENT || type == TypeAnticipation.TITULARISATION
                 ? gradeSuivantService.indexer() : null;
+        Map<CleDossier,DossierResume> dossiers=suiviDossiers.tous();
         return agentRepository.findAllActifs().stream().filter(filtre::accepte)
                 .flatMap(a -> moteur.calculerEcheances(a).stream().filter(e -> e.type() == type)
-                        .map(e -> new AgentEcheance(a, e, versAlerte(a, e, fenetrePreparation, grades))))
+                        .map(e -> {
+                            DossierResume dossier=dossiers.get(new CleDossier(a.getMatricule(),e.type(),e.dateEcheance()));
+                            EtatDossier etat=dossier==null?null:dossier.etat(aujourdhui);
+                            return new AgentEcheance(a,e,versAlerte(a,e,fenetrePreparation,grades,etat),dossier);
+                        }))
                 .filter(ae -> {
                     LocalDate retenue = surPreparation ? ae.ligne().datePreparation() : ae.ligne().dateEcheance();
                     return filtreDatesActif
@@ -153,9 +164,8 @@ public class AnticipationService {
         return true;
     }
 
-    private EcheanceAnticipeeDTO versAlerte(Agent a, Echeance e, FenetreAnticipation fenetre,
-                                             GradesParCorps grades) {
-        return EcheanceAnticipeeDTO.de(a, e, fenetre, grades);
+    private EcheanceAnticipeeDTO versAlerte(Agent a,Echeance e,FenetreAnticipation fenetre,GradesParCorps grades,EtatDossier dossier) {
+        return EcheanceAnticipeeDTO.de(a,e,fenetre,grades,dossier);
     }
 
 }
