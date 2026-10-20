@@ -13,10 +13,15 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import java.time.LocalDate;
 
 @RestController @RequestMapping("/api/dossiers") @RequiredArgsConstructor @PreAuthorize("hasRole('ADMIN')")
 public class DossierController {
     private final DossierService dossierService;
+    @GetMapping("/par-echeance")
+    public ResponseEntity<DossierDTO> parEcheance(@RequestParam String matricule,@RequestParam TypeAnticipation type,@RequestParam LocalDate dateEcheance) {
+        return ResponseEntity.ok(dossierService.parEcheance(matricule.trim(),type,dateEcheance));
+    }
     @GetMapping
     public ResponseEntity<Page<DossierDTO>> lister(@RequestParam(defaultValue="A_TRAITER") VueDossier vue,
             @RequestParam(defaultValue="false") boolean inverse,

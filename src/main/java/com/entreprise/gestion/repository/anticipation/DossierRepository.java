@@ -10,12 +10,14 @@ import com.entreprise.gestion.service.dossier.DossierResume;
 import com.entreprise.gestion.service.dossier.VueDossier;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 public interface DossierRepository extends JpaRepository<Dossier,Long> {
     String EN_COURS="com.entreprise.gestion.entite.anticipation.StatutDossier.EN_COURS";
@@ -41,6 +43,20 @@ public interface DossierRepository extends JpaRepository<Dossier,Long> {
         return rechercherFiltre(statuts,b.preparationMax(),b.echeanceMin(),b.echeanceMax(),type,matricule,
                 f.statutAgent(),f.corps(),f.grade(),f.categorie(),f.fiv(),f.soa(),f.region(),f.ministere(),page);
     }
+
+    @Query("SELECT d FROM Dossier d "+JOINTURES_FETCH+" WHERE "+FILTRES)
+    List<Dossier> rechercherTousFiltre(@Param("statuts") Collection<StatutDossier> statuts,@Param("preparationMax") LocalDate preparationMax,
+            @Param("echeanceMin") LocalDate echeanceMin,@Param("echeanceMax") LocalDate echeanceMax,
+            @Param("type") TypeAnticipation type,@Param("matricule") String matricule,@Param("statutAgent") StatutAgent statutAgent,
+            @Param("corps") String corps,@Param("grade") String grade,@Param("categorie") String categorie,
+            @Param("fiv") String fiv,@Param("soa") String soa,@Param("region") String region,@Param("ministere") String ministere, Sort sort);
+
+    default List<Dossier> rechercherTous(Collection<StatutDossier> statuts,TypeAnticipation type,String matricule,VueDossier.Bornes b,FiltreAgents f,Sort sort) {
+        return rechercherTousFiltre(statuts,b.preparationMax(),b.echeanceMin(),b.echeanceMax(),type,matricule,
+                f.statutAgent(),f.corps(),f.grade(),f.categorie(),f.fiv(),f.soa(),f.region(),f.ministere(),sort);
+    }
+
+    Optional<Dossier> findByAgentMatriculeAndTypeAndDateEcheance(String matricule,TypeAnticipation type,LocalDate dateEcheance);
 
     @Query("SELECT COUNT(d) FROM Dossier d "+JOINTURES+" WHERE "+FILTRES)
     long compterFiltre(@Param("statuts") Collection<StatutDossier> statuts,@Param("preparationMax") LocalDate preparationMax,

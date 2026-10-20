@@ -6,6 +6,7 @@ import com.entreprise.gestion.entite.anticipation.TypeAnticipation;
 import com.entreprise.gestion.security.UserDetailsImpl;
 import com.entreprise.gestion.service.anticipation.CritereDate;
 import com.entreprise.gestion.service.anticipation.FiltreAgents;
+import com.entreprise.gestion.service.dossier.VueDossier;
 import com.entreprise.gestion.service.exports.*;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -34,10 +35,13 @@ public class ExportController {
             @RequestParam(required=false) CritereDate critereDate,
             @RequestParam(required=false) Set<CategorieCalendrier> typesCalendrier,
             @RequestParam(required=false) TypeAnticipation type, @RequestParam(required=false) StatutAlerte statut,
-            @RequestParam(required=false) String matricule, @ModelAttribute FiltreAgents filtre,
+            @RequestParam(required=false) String matricule,
+            @RequestParam(required=false) VueDossier vue,
+            @RequestParam(defaultValue="false") boolean inverse,
+            @ModelAttribute FiltreAgents filtre,
             @AuthenticationPrincipal UserDetailsImpl principal, HttpServletRequest requete,
             HttpServletResponse reponse) throws IOException {
-        DemandeExport demande=new DemandeExport(Ecran.depuisSlug(ecran),filtre,prevenanceMois,retardMois,dateDebut,dateFin,critereDate,typesCalendrier,type,statut,matricule==null||matricule.isBlank()?null:matricule.trim());
+        DemandeExport demande=new DemandeExport(Ecran.depuisSlug(ecran),filtre,prevenanceMois,retardMois,dateDebut,dateFin,critereDate,typesCalendrier,type,statut,matricule==null||matricule.isBlank()?null:matricule.trim(),vue,inverse);
         ExportService.Fichier fichier=exportService.preparer(demande,principal,requete.getRemoteAddr());
         reponse.setContentType(XLSX);
         reponse.setHeader(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename(fichier.nom()).build().toString());

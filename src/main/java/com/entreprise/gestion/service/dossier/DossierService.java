@@ -48,6 +48,19 @@ public class DossierService {
     private long compter(VueDossier vue,TypeAnticipation type,String matricule,FiltreAgents filtre,LocalDate aujourd) {
         return dossierRepository.compter(vue.statuts(),type,matricule,vue.bornes(aujourd),filtre);
     }
+
+    @Transactional(readOnly=true)
+    public List<Dossier> pourExport(VueDossier vue,boolean inverse,TypeAnticipation type,String matricule,FiltreAgents filtre) {
+        return dossierRepository.rechercherTous(vue.statuts(),type,matricule,vue.bornes(LocalDate.now()),
+                filtre==null?FiltreAgents.AUCUN:filtre,vue.tri(inverse));
+    }
+
+    @Transactional(readOnly=true)
+    public DossierDTO parEcheance(String matricule,TypeAnticipation type,LocalDate dateEcheance) {
+        Dossier d=dossierRepository.findByAgentMatriculeAndTypeAndDateEcheance(matricule,type,dateEcheance)
+                .orElseThrow(()->new BusinessException("DOSSIER_INTROUVABLE","Aucun dossier pour cette échéance ("+matricule+", "+type+", "+fmt(dateEcheance)+")."));
+        return vers(d,LocalDate.now());
+    }
     @Transactional
     public DossierDTO mettreAJourEtapes(Long id,Long version,Map<EtapeDossier,LocalDate> demandees,UserDetailsImpl acteur) {
         Dossier d=trouver(id);

@@ -5,9 +5,10 @@ import com.entreprise.gestion.entite.anticipation.StatutAlerte;
 import com.entreprise.gestion.entite.anticipation.TypeAnticipation;
 import com.entreprise.gestion.service.anticipation.CritereDate;
 import com.entreprise.gestion.service.anticipation.FiltreAgents;
+import com.entreprise.gestion.service.dossier.VueDossier;
 import java.time.LocalDate;
 import java.util.Set;
 
 public record DemandeExport(Ecran ecran, FiltreAgents filtre, Integer prevenanceMois, Integer retardMois,
         LocalDate dateDebut, LocalDate dateFin, CritereDate critereDate, Set<CategorieCalendrier> typesCalendrier,
-        TypeAnticipation type, StatutAlerte statutAlerte, String matricule) {}
+        TypeAnticipation type, StatutAlerte statutAlerte, String matricule, VueDossier vue, boolean inverse) {}
