@@ -34,9 +34,16 @@ public class MoteurAnticipation {
         return resultats;
     }
 
+    /** Date de départ à la retraite : naissance + âge légal. null si la naissance est inconnue. */
+    public LocalDate dateRetraite(Agent a) {
+        return a.getDateNaissance() == null ? null : a.getDateNaissance().plusYears(ageRetraite);
+    }
+
+    public int ageRetraite() { return ageRetraite; }
+
     private Echeance calculerRetraite(Agent a) {
-        if (a.getDateNaissance() == null) return anomalie(a, TypeAnomalie.DATE_NAISSANCE_MANQUANTE, "Date de naissance manquante");
-        LocalDate echeance = a.getDateNaissance().plusYears(ageRetraite);
+        LocalDate echeance = dateRetraite(a);
+        if (echeance == null) return anomalie(a, TypeAnomalie.DATE_NAISSANCE_MANQUANTE, "Date de naissance manquante");
         return new Echeance(a.getMatricule(), nomComplet(a), TypeAnticipation.DEPART_RETRAITE, echeance, null);
     }
 

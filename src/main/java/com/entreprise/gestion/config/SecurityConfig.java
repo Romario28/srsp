@@ -66,6 +66,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/imports/**").hasRole("ADMIN")  // ou .hasRole("ADMIN")
                         .requestMatchers("/api/exports/**").hasRole("ADMIN")
                         .requestMatchers("/api/dossiers/**").hasRole("ADMIN")
+                        .requestMatchers("/api/dashboard/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
                 .headers(h -> h.frameOptions(f -> f.disable()))
