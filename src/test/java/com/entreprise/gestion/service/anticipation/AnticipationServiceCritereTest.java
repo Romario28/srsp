@@ -75,7 +75,7 @@ class AnticipationServiceCritereTest {
 
     @Test void ligneExposeEtatEtResumeDuDossierLie() {
         DossierResume lie=new DossierResume("COURANT",TYPE,echeanceCourant,StatutDossier.EN_COURS,
-                aujourdhui.minusDays(3),null,null,null,null,null,null,null,null);
+                aujourdhui.minusDays(3),null);
         when(suiviDossiers.tous()).thenReturn(Map.of(lie.cle(),lie));
         List<AnticipationService.AgentEcheance> lignes=service.echeancesAvecAgent(TYPE,null,null,null,null,
                 CritereDate.ECHEANCE,FiltreAgents.AUCUN);
