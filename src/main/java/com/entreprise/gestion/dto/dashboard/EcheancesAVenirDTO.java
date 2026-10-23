@@ -7,4 +7,9 @@ import java.util.Map;
 
 /** Échéances datées d'agents en activité, sur un intervalle inclusif, hors anomalies. */
 public record EcheancesAVenirDTO(int jours, LocalDate du, LocalDate au, long total,
-                                 Map<CategorieCalendrier, Long> parCategorie) {}
+                                 Map<CategorieCalendrier, Long> parCategorie,
+                                 Map<CategorieCalendrier, Long> enPreparation,
+                                 PeriodeEcheances moisProchain, PeriodeEcheances anneeProchaine) {
+    public record PeriodeEcheances(LocalDate du, LocalDate au, long total,
+                                   Map<CategorieCalendrier, Long> parCategorie) {}
+}

@@ -4,11 +4,16 @@ import com.entreprise.gestion.dto.dashboard.EcheancesAVenirDTO;
 import com.entreprise.gestion.dto.dashboard.EffectifsDTO;
 import com.entreprise.gestion.entite.anticipation.Agent;
 import com.entreprise.gestion.entite.anticipation.Corps;
+import com.entreprise.gestion.entite.anticipation.CategorieCalendrier;
+import com.entreprise.gestion.entite.anticipation.Ministere;
 import com.entreprise.gestion.entite.anticipation.StatutAgent;
 import com.entreprise.gestion.entite.anticipation.TypeAnticipation;
 import com.entreprise.gestion.repository.referentiel.AgentRepository;
 import com.entreprise.gestion.service.anticipation.MoteurAnticipation;
 import com.entreprise.gestion.service.anticipation.Echeance;
+import com.entreprise.gestion.service.anticipation.ConfigurationDelaiService;
+import com.entreprise.gestion.service.anticipation.FenetreAnticipation;
+import com.entreprise.gestion.service.anticipation.FiltreAgents;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -18,12 +23,15 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class DashboardServiceTest {
@@ -31,6 +39,7 @@ class DashboardServiceTest {
 
     @Mock AgentRepository agentRepository;
     @Mock MoteurAnticipation moteur;
+    @Mock ConfigurationDelaiService configurationDelaiService;
     @InjectMocks DashboardService service;
 
     @BeforeEach
@@ -40,6 +49,15 @@ class DashboardServiceTest {
             Agent agent = invocation.getArgument(0);
             return agent.getDateNaissance() == null ? null : agent.getDateNaissance().plusYears(60);
         });
+        lenient().when(configurationDelaiService.resoudreToutes()).thenReturn(Map.of());
+    }
+
+    private EffectifsDTO effectifs(LocalDate jour) { return service.effectifs(jour, FiltreAgents.AUCUN); }
+
+    private static Agent agentDuMinistere(String matricule, String code) {
+        Agent.AgentBuilder builder = Agent.builder().matricule(matricule).statut(StatutAgent.FONCTIONNAIRE);
+        if (code != null) builder.ministere(Ministere.builder().code(code).build());
+        return builder.build();
     }
 
     private static Agent agent(String matricule, StatutAgent statut, LocalDate naissance, String sexe, String categorie) {
@@ -58,7 +76,7 @@ class DashboardServiceTest {
         Agent sansNaissance = agent("E", null, null, "F", null);
         when(agentRepository.findAllActifs()).thenReturn(List.of(age25, age24, age59, age60, sansNaissance));
 
-        EffectifsDTO dto = service.effectifs(AUJOURDHUI);
+        EffectifsDTO dto = effectifs(AUJOURDHUI);
 
         assertThat(dto.total()).isEqualTo(5);
         assertThat(dto.fonctionnaires()).isEqualTo(1);
@@ -81,7 +99,7 @@ class DashboardServiceTest {
         Agent anniversaire = agent("LEAP", StatutAgent.FONCTIONNAIRE, LocalDate.of(1996, 2, 29), "F", null);
         when(agentRepository.findAllActifs()).thenReturn(List.of(anniversaire));
 
-        EffectifsDTO dto = service.effectifs(jour);
+        EffectifsDTO dto = effectifs(jour);
 
         assertThat(dto.ages().lignes()).singleElement()
                 .satisfies(ligne -> assertThat(ligne.tranche()).isEqualTo(1)); // 25 ans, tranche 25–29
@@ -96,7 +114,7 @@ class DashboardServiceTest {
         Agent retraiteAnneeSuivante = agent("E", StatutAgent.FONCTIONNAIRE, LocalDate.of(1967, 11, 1), "F", null);
         when(agentRepository.findAllActifs()).thenReturn(List.of(anniversaire, lendemain, fevrier, retraiteAtteinte, retraiteAnneeSuivante));
 
-        EffectifsDTO dto = service.effectifs(AUJOURDHUI);
+        EffectifsDTO dto = effectifs(AUJOURDHUI);
 
         assertThat(dto.retraites().depuis()).isEqualTo(LocalDate.of(2026, 10, 1));
         assertThat(dto.retraites().mois()).hasSize(12);
@@ -132,6 +150,59 @@ class DashboardServiceTest {
     @Test
     void echeancesRefuseUneFenetreInvalide() {
         assertThatThrownBy(() -> service.echeances(0, AUJOURDHUI)).hasMessageContaining("compris entre 1");
+    }
+
+    @Test
+    void perimetreRestreintEffectifsEtEcheancesEtEviteLeCalculHorsPerimetre() {
+        Agent dedans = agentDuMinistere("D", "05");
+        Agent dehors = agentDuMinistere("H", "06");
+        Agent sansMinistere = agentDuMinistere("S", null);
+        when(agentRepository.findAllActifs()).thenReturn(List.of(dedans, dehors, sansMinistere));
+        when(moteur.calculerEcheances(dedans)).thenReturn(List.of(echeance(TypeAnticipation.FIN_CONTRAT, AUJOURDHUI.plusDays(4))));
+        FiltreAgents portee = new FiltreAgents(null, null, null, null, null, null, null, "05");
+
+        assertThat(service.effectifs(AUJOURDHUI, portee).total()).isEqualTo(1);
+        assertThat(service.echeances(30, AUJOURDHUI, portee).total()).isEqualTo(1);
+        verify(moteur, never()).calculerEcheances(dehors);
+        verify(moteur, never()).calculerEcheances(sansMinistere);
+    }
+
+    @Test
+    void echeancesComptePreparationEtMoisEtAnneeCivilsAvecBornesInclusives() {
+        Agent agent = agent("A", StatutAgent.FONCTIONNAIRE, null, "M", null);
+        when(agentRepository.findAllActifs()).thenReturn(List.of(agent));
+        when(configurationDelaiService.resoudreToutes()).thenReturn(Map.of(
+                TypeAnticipation.DEPART_RETRAITE, new FenetreAnticipation(12, 0),
+                TypeAnticipation.AVANCEMENT, new FenetreAnticipation(3, 0),
+                TypeAnticipation.INTEGRATION, new FenetreAnticipation(3, 0),
+                TypeAnticipation.FIN_CONTRAT, new FenetreAnticipation(3, 1),
+                TypeAnticipation.TITULARISATION, new FenetreAnticipation(3, 1)));
+        when(moteur.calculerEcheances(agent)).thenReturn(List.of(
+                echeance(TypeAnticipation.DEPART_RETRAITE, LocalDate.of(2026, 11, 30)),
+                echeance(TypeAnticipation.AVANCEMENT, LocalDate.of(2026, 12, 1)),
+                echeance(TypeAnticipation.INTEGRATION, LocalDate.of(2026, 10, 31)),
+                echeance(TypeAnticipation.FIN_CONTRAT, LocalDate.of(2027, 1, 1)),
+                echeance(TypeAnticipation.TITULARISATION, LocalDate.of(2027, 12, 31))));
+
+        EcheancesAVenirDTO dto = service.echeances(30, AUJOURDHUI, FiltreAgents.AUCUN);
+
+        assertThat(dto.moisProchain().du()).isEqualTo(LocalDate.of(2026, 11, 1));
+        assertThat(dto.moisProchain().au()).isEqualTo(LocalDate.of(2026, 11, 30));
+        assertThat(dto.moisProchain().total()).isEqualTo(1);
+        assertThat(dto.anneeProchaine().du()).isEqualTo(LocalDate.of(2027, 1, 1));
+        assertThat(dto.anneeProchaine().au()).isEqualTo(LocalDate.of(2027, 12, 31));
+        assertThat(dto.anneeProchaine().total()).isEqualTo(2);
+        assertThat(dto.enPreparation().values().stream().mapToLong(Long::longValue).sum()).isEqualTo(4);
+        assertThat(dto.enPreparation().get(CategorieCalendrier.TITULARISATION)).isZero();
+    }
+
+    @Test
+    void moisProchainEnDecembrePasseEnJanvierDeLAnneeSuivante() {
+        when(agentRepository.findAllActifs()).thenReturn(List.of());
+        EcheancesAVenirDTO dto = service.echeances(30, LocalDate.of(2026, 12, 15), FiltreAgents.AUCUN);
+        assertThat(dto.moisProchain().du()).isEqualTo(LocalDate.of(2027, 1, 1));
+        assertThat(dto.moisProchain().au()).isEqualTo(LocalDate.of(2027, 1, 31));
+        assertThat(dto.anneeProchaine().du()).isEqualTo(LocalDate.of(2027, 1, 1));
     }
 
     private static Echeance echeance(TypeAnticipation type, LocalDate date) {
