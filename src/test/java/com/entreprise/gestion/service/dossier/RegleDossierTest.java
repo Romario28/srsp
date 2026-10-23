@@ -1,10 +1,8 @@
 package com.entreprise.gestion.service.dossier;
 
 import com.entreprise.gestion.entite.anticipation.Dossier;
-import com.entreprise.gestion.entite.anticipation.EtapeDossier;
 import com.entreprise.gestion.entite.anticipation.StatutDossier;
 import com.entreprise.gestion.entite.anticipation.TypeAnticipation;
-import com.entreprise.gestion.service.dossier.EtatDossier;
 import com.entreprise.gestion.exception.BusinessException;
 import org.junit.jupiter.api.Test;
 import java.time.LocalDate;

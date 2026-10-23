@@ -6,8 +6,6 @@ import com.entreprise.gestion.security.UserDetailsImpl;
 import com.entreprise.gestion.repository.anticipation.AlerteRepository;
 import com.entreprise.gestion.repository.referentiel.AgentRepository;
 import com.entreprise.gestion.entite.anticipation.Alerte;
-import com.entreprise.gestion.entite.anticipation.StatutAlerte;
-import com.entreprise.gestion.entite.anticipation.EtapeDossier;
 import com.entreprise.gestion.service.AuditService;
 import com.entreprise.gestion.service.VisibiliteService;
 import com.entreprise.gestion.service.anticipation.*;
@@ -111,15 +109,20 @@ public class ExportService {
         return d.dateDebut()==null?"tout":d.dateDebut().toString()+(d.dateFin()==null?"":"_au_"+d.dateFin());
     }
 
-    private static List<String> entetesDossier(){
-        List<String> h=new ArrayList<>();h.add("DOSSIER_STATUT");
-        for(EtapeDossier e:EtapeDossier.values())h.add("DOSSIER_"+e.name());
-        h.add("DOSSIER_MOTIF_SANS_SUITE");return List.copyOf(h);
+
+    private static List<String> entetesDossier() {
+        return List.of("DOSSIER_STATUT", "DOSSIER_DATE_DEMARRAGE", "DOSSIER_MOTIF_SANS_SUITE");
     }
-    private static Object[] ajouterDossier(Object[] specifiques,DossierResume dossier,LocalDate aujourd){
-        Object[] v=new Object[DOSSIER.size()];
-        if(dossier!=null){int i=0;v[i++]=dossier.etat(aujourd).libelle();for(EtapeDossier e:EtapeDossier.values())v[i++]=dossier.etape(e);v[i]=dossier.motifSansSuite();}
-        Object[] all=Arrays.copyOf(specifiques,specifiques.length+v.length);System.arraycopy(v,0,all,specifiques.length,v.length);return all;
+    private static Object[] ajouterDossier(Object[] specifiques, DossierResume dossier, LocalDate aujourd) {
+        Object[] v = new Object[DOSSIER.size()];
+        if (dossier != null) {
+            v[0] = dossier.etat(aujourd).libelle();
+            v[1] = dossier.dateDemarrage();
+            v[2] = dossier.motifSansSuite();
+        }
+        Object[] all = Arrays.copyOf(specifiques, specifiques.length + v.length);
+        System.arraycopy(v, 0, all, specifiques.length, v.length);
+        return all;
     }
 
     private static Object[] ligneBase(Agent a,Object... extra) {

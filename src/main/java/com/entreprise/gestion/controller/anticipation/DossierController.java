@@ -34,12 +34,12 @@ public class DossierController {
             @ModelAttribute FiltreAgents filtre) {
         return ResponseEntity.ok(dossierService.synthese(type,matricule==null||matricule.isBlank()?null:matricule.trim(),filtre));
     }
-    @PutMapping("/{id}/etapes") public ResponseEntity<DossierDTO> etapes(@PathVariable Long id,@Valid @RequestBody EtapesRequest req,@AuthenticationPrincipal UserDetailsImpl principal){
-        return ResponseEntity.ok(dossierService.mettreAJourEtapes(id,req.version(),req.etapes(),principal));
-    }
-    @PostMapping("/lot") public ResponseEntity<ResultatLot> lot(@Valid @RequestBody LotRequest req,@AuthenticationPrincipal UserDetailsImpl principal){
-        return ResponseEntity.ok(dossierService.appliquerLot(req.ids(),req.etape(),req.date(),req.ecraser(),principal));
-    }
+//    @PutMapping("/{id}/etapes") public ResponseEntity<DossierDTO> etapes(@PathVariable Long id,@Valid @RequestBody EtapesRequest req,@AuthenticationPrincipal UserDetailsImpl principal){
+//        return ResponseEntity.ok(dossierService.mettreAJourEtapes(id,req.version(),req.etapes(),principal));
+//    }
+//    @PostMapping("/lot") public ResponseEntity<ResultatLot> lot(@Valid @RequestBody LotRequest req,@AuthenticationPrincipal UserDetailsImpl principal){
+//        return ResponseEntity.ok(dossierService.appliquerLot(req.ids(),req.etape(),req.date(),req.ecraser(),principal));
+//    }
     @PostMapping("/{id}/sans-suite") public ResponseEntity<DossierDTO> sansSuite(@PathVariable Long id,@Valid @RequestBody SansSuiteRequest req,@AuthenticationPrincipal UserDetailsImpl principal){
         return ResponseEntity.ok(dossierService.classerSansSuite(id,req.motif(),principal));
     }
