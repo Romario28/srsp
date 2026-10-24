@@ -39,7 +39,14 @@ public class AnticipationService {
     public AgentFicheDTO fiche(String matricule) {
         Agent agent = agentRepository.findById(matricule)
                 .orElseThrow(() -> new BusinessException("AGENT_INTROUVABLE", "Agent introuvable : " + matricule));
-        return AgentFicheDTO.from(agent, integrationDe(agent));
+        return AgentFicheDTO.from(agent, integrationDe(agent), gradeSuivantDe(agent));
+    }
+
+    /** Index des grades gardé 30 s en mémoire : pas de requête supplémentaire à chaque ouverture. */
+    private GradeSuivant gradeSuivantDe(Agent agent) {
+        if (agent.getGrade() == null || agent.getCorps() == null) return GradeSuivant.INDETERMINE;
+        return gradeSuivantService.indexer()
+                .pour(agent.getCorps().getCode(), agent.getCorps().getCategorie(), agent.getGrade().getCode());
     }
 
     private AgentFicheDTO.Integration integrationDe(Agent agent) {

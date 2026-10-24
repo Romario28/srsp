@@ -3,6 +3,7 @@ package com.entreprise.gestion.dto.anticipation;
 import com.entreprise.gestion.entite.anticipation.Agent;
 import com.entreprise.gestion.entite.anticipation.StatutAgent;
 import com.entreprise.gestion.entite.anticipation.SituationIntegration;
+import com.entreprise.gestion.service.anticipation.GradeSuivant;
 
 import java.time.LocalDate;
 
@@ -30,7 +31,8 @@ public record AgentFicheDTO(
         Reference localite,
         Reference soa, String regCode,
         Reference ministere,
-        Integration integration
+        Integration integration,
+        GradeSuivant gradeSuivant
 ) {
     /** Code et libellé d'un référentiel. */
     public record Reference(String code, String libelle) {}
@@ -38,10 +40,15 @@ public record AgentFicheDTO(
     public record Integration(SituationIntegration situation, LocalDate dateIntegration, LocalDate datePreparation) {}
 
     public static AgentFicheDTO from(Agent a) {
-        return from(a, null);
+        return from(a, null, null);
     }
 
+    /** Surcharge conservée pour les appelants existants. */
     public static AgentFicheDTO from(Agent a, Integration integration) {
+        return from(a, integration, null);
+    }
+
+    public static AgentFicheDTO from(Agent a, Integration integration, GradeSuivant gradeSuivant) {
         return new AgentFicheDTO(
                 a.getMatricule(), a.getNom(), a.getPrenoms(), a.getStatut(),
                 a.getDateNaissance(), a.getSexe(), a.getCin(), a.getPosteNumero(),
@@ -57,6 +64,7 @@ public record AgentFicheDTO(
                 a.getSoa() != null ? new Reference(a.getSoa().getCode(), a.getSoa().getLibelle()) : null,
                 a.getRegCode(),
                 a.getMinistere() != null ? new Reference(a.getMinistere().getCode(), a.getMinistere().getLibelle()) : null,
-                integration);
+                integration,
+                gradeSuivant);
     }
 }
