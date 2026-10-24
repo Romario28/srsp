@@ -138,7 +138,7 @@ public class CalendrierService {
     }
 
     private static boolean changeDeGrade(TypeAnticipation type) {
-        return type == TypeAnticipation.AVANCEMENT || type == TypeAnticipation.TITULARISATION;
+        return type.changeDeGrade();
     }
 
     private static CleDossier cle(Placee p) {

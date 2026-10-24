@@ -9,7 +9,7 @@ import java.time.LocalDate;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class MoteurAnticipationIntegrationTest {
-    private final MoteurAnticipation moteur=new MoteurAnticipation(null);
+    private final MoteurAnticipation moteur=new MoteurAnticipation(null,null);
     private static Agent contractuel(LocalDate debut,LocalDate fin) {
         return Agent.builder().matricule("123456").prenoms("Jean").nom("Rakoto").statut(StatutAgent.CONTRACTUEL).dateDebutContrat(debut).dateFinContrat(fin).build();
     }

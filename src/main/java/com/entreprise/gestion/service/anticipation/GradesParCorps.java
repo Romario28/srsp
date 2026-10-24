@@ -1,5 +1,7 @@
 package com.entreprise.gestion.service.anticipation;
 
+import com.entreprise.gestion.entite.anticipation.CasGradeSuivant;
+
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -55,6 +57,27 @@ public final class GradesParCorps {
                 .sorted(Comparator.naturalOrder())
                 .toList();
         return candidats.size() == 1 ? GradeSuivant.unique(candidats.get(0)) : GradeSuivant.ambigu(candidats);
+    }
+
+    private static final int LONGUEUR_CLASSE = 2;
+
+    /**
+     * Vrai si le passage au grade suivant change les deux premiers caractères du code
+     * (2C2E → 1C3E : oui ; 2C1E → 2C2E : non). Le grade courant est comparé sous son nom actuel
+     * (renommage appliqué : MC2E vaut 2C1E). Suivant ambigu : oui seulement si TOUS les candidats
+     * changent de classe. Indéterminé ou dernier grade : non.
+     */
+    public boolean changeDeClasse(String corpsCode, String categorie, String gradeCode) {
+        GradeSuivant suivant = pour(corpsCode, categorie, gradeCode);
+        if (suivant.cas() != CasGradeSuivant.UNIQUE && suivant.cas() != CasGradeSuivant.AMBIGU) return false;
+        String courant = renommages.appliquer(corpsCode, gradeCode);
+        return !suivant.codes().isEmpty()
+                && suivant.codes().stream().allMatch(code -> classeDifferente(courant, code));
+    }
+
+    private static boolean classeDifferente(String a, String b) {
+        if (a == null || b == null || a.length() < LONGUEUR_CLASSE || b.length() < LONGUEUR_CLASSE) return false;
+        return !a.substring(0, LONGUEUR_CLASSE).equals(b.substring(0, LONGUEUR_CLASSE));
     }
 
     private static String cle(String corpsCode, String categorie) {

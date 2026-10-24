@@ -125,6 +125,18 @@ public class AnticipationController {
                 prevenanceMois, retardMois, dateDebut, dateFin, critereDate, filtre));
     }
 
+    @GetMapping("/avancement-classe")
+    public ResponseEntity<List<EcheanceAnticipeeDTO>> avancementClasse(
+            @RequestParam(required = false) Integer prevenanceMois,
+            @RequestParam(required = false) Integer retardMois,
+            @RequestParam(required = false) LocalDate dateDebut,
+            @RequestParam(required = false) LocalDate dateFin,
+            @RequestParam(required = false) CritereDate critereDate,
+            @ModelAttribute FiltreAgents filtre) {
+        return ResponseEntity.ok(anticipationService.avancementsClasseDus(
+                prevenanceMois, retardMois, dateDebut, dateFin, critereDate, filtre));
+    }
+
     @GetMapping("/anomalies")
     public ResponseEntity<List<EcheanceAnticipeeDTO>> anomalies(@ModelAttribute FiltreAgents filtre) {
         return ResponseEntity.ok(anticipationService.anomalies(filtre));

@@ -80,4 +80,26 @@ class GradesParCorpsTest {
     @Test void indicesDiscordantsSurUnMemeGradeDonnentIndetermine() {
         assertThat(grades.pour("B77B", "10", "2C1E")).isEqualTo(GradeSuivant.INDETERMINE);
     }
+
+    @Test void echelonDansLaMemeClasseNEstPasUnChangementDeClasse() {
+        assertThat(grades.changeDeClasse("A88J", "10", "2C1E")).isFalse();   // 2C1E → 2C2E
+        assertThat(grades.changeDeClasse("A88J", "10", "PR1E")).isFalse();   // PR1E → PR3E
+    }
+    @Test void lesDeuxPremiersCaracteresQuiChangentFontUneClasse() {
+        assertThat(grades.changeDeClasse("A88J", "10", "2C2E")).isTrue();    // 2C2E → 1C3E
+        assertThat(grades.changeDeClasse("A88J", "10", "1C3E")).isTrue();    // 1C3E → PR1E
+        assertThat(grades.changeDeClasse("A88J", "10", "PR3E")).isTrue();    // PR3E → EX1E
+    }
+    @Test void leGradeCourantEstComparePosterieurementAuRenommage() {
+        assertThat(grades.changeDeClasse("A88J", "10", "MC2E")).isFalse();   // MC2E vaut 2C1E : 2C1E → 2C2E
+        assertThat(grades.changeDeClasse("A88L", "10", "1C3E")).isTrue();    // renommage par corps : 1C3E → PR1E
+    }
+    @Test void ambiguTousLesCandidatsChangentDeClasseOuNon() {
+        assertThat(grades.changeDeClasse("A15A", "09", "G23E")).isTrue();    // G2 → {G11E, G12E} : G1 dans les deux cas
+    }
+    @Test void dernierGradeEtIndetermineNeSontPasUneClasse() {
+        assertThat(grades.changeDeClasse("A88J", "10", "EX2E")).isFalse();
+        assertThat(grades.changeDeClasse("B77B", "10", "2C1E")).isFalse();
+        assertThat(grades.changeDeClasse("ZZZZ", "10", "2C1E")).isFalse();
+    }
 }

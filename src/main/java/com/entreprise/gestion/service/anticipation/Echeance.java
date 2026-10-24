@@ -6,7 +6,9 @@ import com.entreprise.gestion.entite.anticipation.TypeAnomalie;
 import java.time.LocalDate;
 
 public record Echeance(
-        String matricule, String nomComplet, TypeAnticipation type,
+        String matricule,
+        String nomComplet,
+        TypeAnticipation type,
         LocalDate dateEcheance,   // null pour ANOMALIE
         String details,
         TypeAnomalie typeAnomalie

@@ -85,6 +85,12 @@ public class AnticipationService {
     }
 
     @Transactional(readOnly = true)
+    public List<EcheanceAnticipeeDTO> avancementsClasseDus(Integer prevenanceMois, Integer retardMois,
+            LocalDate dateDebut, LocalDate dateFin, CritereDate critereDate, FiltreAgents filtre) {
+        return calculerParType(TypeAnticipation.AVANCEMENT_CLASSE, prevenanceMois, retardMois, dateDebut, dateFin, critereDate, filtre);
+    }
+
+    @Transactional(readOnly = true)
     public List<EcheanceAnticipeeDTO> anomalies(FiltreAgents filtre) {
         return lignes(anomaliesAvecAgent(filtre));
     }
@@ -129,8 +135,7 @@ public class AnticipationService {
         FenetreAnticipation fenetre = fenetreEffective(type, prevenanceMois, retardMois);
         FenetreAnticipation fenetrePreparation = surPreparation
                 ? configurationDelaiService.resoudreFenetre(type) : fenetre;
-        GradesParCorps grades = type == TypeAnticipation.AVANCEMENT || type == TypeAnticipation.TITULARISATION
-                ? gradeSuivantService.indexer() : null;
+        GradesParCorps grades = type.changeDeGrade() ? gradeSuivantService.indexer() : null;
         Map<CleDossier,DossierResume> dossiers=suiviDossiers.tous();
         return agentRepository.findAllActifs().stream().filter(filtre::accepte)
                 .flatMap(a -> moteur.calculerEcheances(a).stream().filter(e -> e.type() == type)

@@ -16,6 +16,7 @@ public final class DelaisParDefaut {
     private static final Map<TypeAnticipation, FenetreAnticipation> VALEURS = Map.of(
             TypeAnticipation.DEPART_RETRAITE, new FenetreAnticipation(12, 0),
             TypeAnticipation.AVANCEMENT,      new FenetreAnticipation(6, 0),
+            TypeAnticipation.AVANCEMENT_CLASSE, new FenetreAnticipation(1, 0),   // 1 mois avant, aucun retard
             TypeAnticipation.TITULARISATION,  new FenetreAnticipation(3, 0),
             TypeAnticipation.FIN_CONTRAT,     new FenetreAnticipation(3, 1),
             TypeAnticipation.INTEGRATION,     new FenetreAnticipation(3, 0)

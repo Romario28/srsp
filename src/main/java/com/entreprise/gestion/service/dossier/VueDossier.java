@@ -39,4 +39,11 @@ public enum VueDossier {
             case TOUS -> Sort.by(desc("datePreparation"), desc("id"));
         };
     }
+
+    // regroupé par agent : les dossiers d'un agent se suivent, l'ordre de la vue joue à l'intérieur
+    public Sort tri(boolean inverse, boolean parAgent) {
+        Sort base = tri(inverse);
+        if (!parAgent) return base;
+        return Sort.by(asc("agent.nom"), asc("agent.prenoms"), asc("agent.matricule")).and(base);
+    }
 }

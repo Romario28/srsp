@@ -80,6 +80,7 @@ public class ConfigurationDelaiService {
         return switch (type) {
             case DEPART_RETRAITE -> "Départ à la retraite";
             case AVANCEMENT -> "Avancement";
+            case AVANCEMENT_CLASSE -> "Avancement de classe";
             case TITULARISATION -> "Titularisation";
             case FIN_CONTRAT -> "Fin de contrat";
             case INTEGRATION -> "Intégration";

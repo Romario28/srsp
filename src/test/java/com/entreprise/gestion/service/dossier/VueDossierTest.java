@@ -37,4 +37,9 @@ class VueDossierTest {
         for(VueDossier v:new VueDossier[]{VueDossier.EN_COURS,VueDossier.SANS_SUITE,VueDossier.TOUS})
             assertThat(v.tri(true)).as(v.name()).isEqualTo(v.tri(false));
     }
+    @Test void regroupeParAgentPuisSuitLOrdreDeLaVue(){
+        assertThat(ordre(VueDossier.A_TRAITER.tri(false,true))).containsExactly(
+                "agent.nom ASC","agent.prenoms ASC","agent.matricule ASC","dateEcheance ASC","datePreparation ASC","id ASC");
+        assertThat(VueDossier.EN_COURS.tri(false,false)).isEqualTo(VueDossier.EN_COURS.tri(false));
+    }
 }

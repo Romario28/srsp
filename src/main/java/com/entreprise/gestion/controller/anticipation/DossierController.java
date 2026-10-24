@@ -23,16 +23,20 @@ public class DossierController {
         return ResponseEntity.ok(dossierService.parEcheance(matricule.trim(),type,dateEcheance));
     }
     @GetMapping
-    public ResponseEntity<Page<DossierDTO>> lister(@RequestParam(defaultValue="A_TRAITER") VueDossier vue,
-            @RequestParam(defaultValue="false") boolean inverse,
-            @RequestParam(required=false) TypeAnticipation type,@RequestParam(required=false) String matricule,
-            @ModelAttribute FiltreAgents filtre,@RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="50") int size) {
-        return ResponseEntity.ok(dossierService.lister(vue,inverse,type,matricule==null||matricule.isBlank()?null:matricule.trim(),filtre,page,size));
+    public ResponseEntity<Page<DossierDTO>> lister(@RequestParam(defaultValue = "A_TRAITER") VueDossier vue,
+            @RequestParam(defaultValue = "false") boolean inverse,
+            @RequestParam(defaultValue = "false") boolean parAgent,
+            @RequestParam(defaultValue = "false") boolean multiples,
+            @RequestParam(required = false) TypeAnticipation type, @RequestParam(required = false) String matricule,
+            @ModelAttribute FiltreAgents filtre, @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "50") int size) {
+        return ResponseEntity.ok(dossierService.lister(vue, inverse, parAgent, multiples, type,
+                matricule == null || matricule.isBlank() ? null : matricule.trim(), filtre, page, size));
     }
-    @GetMapping("/synthese") public ResponseEntity<SyntheseDossiersDTO> synthese(
-            @RequestParam(required=false) TypeAnticipation type,@RequestParam(required=false) String matricule,
-            @ModelAttribute FiltreAgents filtre) {
-        return ResponseEntity.ok(dossierService.synthese(type,matricule==null||matricule.isBlank()?null:matricule.trim(),filtre));
+    @GetMapping("/synthese")
+    public ResponseEntity<SyntheseDossiersDTO> synthese(@RequestParam(defaultValue = "false") boolean multiples,
+            @RequestParam(required = false) TypeAnticipation type,
+            @RequestParam(required = false) String matricule, @ModelAttribute FiltreAgents filtre) {
+        return ResponseEntity.ok(dossierService.synthese(multiples, type, matricule == null || matricule.isBlank() ? null : matricule.trim(), filtre));
     }
     @PostMapping("/{id}/demarrage")
     public ResponseEntity<DossierDTO> demarrer(@PathVariable Long id, @AuthenticationPrincipal UserDetailsImpl principal) {

@@ -80,8 +80,7 @@ public class BatchAnticipation {
         FenetreAnticipation fenetre = fenetres.get(e.type());
         if (!fenetre.contient(e.dateEcheance(), aujourdhui)) return;
 
-        boolean changeDeGrade = e.type() == TypeAnticipation.AVANCEMENT
-                || e.type() == TypeAnticipation.TITULARISATION;
+        boolean changeDeGrade = e.type().changeDeGrade();
         GradeSuivant gradeSuivant = changeDeGrade ? calculerGradeSuivant(agent, grades) : null;
         SituationActuelle situation = changeDeGrade ? situationActuelle(agent) : null;
         upsert(e, e.dateEcheance(), fenetre.datePreparation(e.dateEcheance()), gradeSuivant, situation);
@@ -115,6 +114,7 @@ public class BatchAnticipation {
      */
     private void upsert(Echeance e, LocalDate dateEcheance, LocalDate datePreparation,
                         GradeSuivant gradeSuivant, SituationActuelle situation) {
+        reclasserAnciennesAlertes(e, dateEcheance);
         List<Alerte> existantes = alerteRepository
                 .findByMatriculeAgentAndTypeAndStatutNot(e.matricule(), e.type(), StatutAlerte.ACQUITTEE);
 
@@ -152,6 +152,21 @@ public class BatchAnticipation {
         if (dejaAcquitteeIdentique) return;
 
         enregistrer(e, dateEcheance, datePreparation, gradeSuivant, situation);
+    }
+
+    // TRANSITOIRE : à retirer après le premier passage complet du batch en production
+    /**
+     * Une alerte émise sous « Avancement » pour la même échéance est requalifiée en « Avancement de classe »
+     * (statut et historique conservés) au lieu d'être doublée par une nouvelle alerte.
+     */
+    private void reclasserAnciennesAlertes(Echeance e, LocalDate dateEcheance) {
+        if (e.type() != TypeAnticipation.AVANCEMENT_CLASSE) return;
+        for (Alerte ancienne : alerteRepository.findByMatriculeAgentAndType(e.matricule(), TypeAnticipation.AVANCEMENT)) {
+            if (java.util.Objects.equals(ancienne.getDateEcheance(), dateEcheance)) {
+                ancienne.setType(TypeAnticipation.AVANCEMENT_CLASSE);
+                alerteRepository.save(ancienne);
+            }
+        }
     }
 
     private void enregistrer(Echeance e, LocalDate dateEcheance, LocalDate datePreparation,

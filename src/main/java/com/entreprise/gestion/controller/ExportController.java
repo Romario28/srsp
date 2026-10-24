@@ -38,10 +38,12 @@ public class ExportController {
             @RequestParam(required=false) String matricule,
             @RequestParam(required=false) VueDossier vue,
             @RequestParam(defaultValue="false") boolean inverse,
+            @RequestParam(defaultValue="false") boolean parAgent,
+            @RequestParam(defaultValue="false") boolean multiples,
             @ModelAttribute FiltreAgents filtre,
             @AuthenticationPrincipal UserDetailsImpl principal, HttpServletRequest requete,
             HttpServletResponse reponse) throws IOException {
-        DemandeExport demande=new DemandeExport(Ecran.depuisSlug(ecran),filtre,prevenanceMois,retardMois,dateDebut,dateFin,critereDate,typesCalendrier,type,statut,matricule==null||matricule.isBlank()?null:matricule.trim(),vue,inverse);
+        DemandeExport demande=new DemandeExport(Ecran.depuisSlug(ecran),filtre,prevenanceMois,retardMois,dateDebut,dateFin,critereDate,typesCalendrier,type,statut,matricule==null||matricule.isBlank()?null:matricule.trim(),vue,inverse,parAgent,multiples);
         ExportService.Fichier fichier=exportService.preparer(demande,principal,requete.getRemoteAddr());
         reponse.setContentType(XLSX);
         reponse.setHeader(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename(fichier.nom()).build().toString());

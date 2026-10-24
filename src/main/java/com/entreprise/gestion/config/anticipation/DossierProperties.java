@@ -15,5 +15,6 @@ import java.util.Set;
 public class DossierProperties {
     private LocalDate dateReprise;
     private Set<TypeAnticipation> typesSuivis = EnumSet.of(TypeAnticipation.DEPART_RETRAITE, TypeAnticipation.AVANCEMENT,
+            TypeAnticipation.AVANCEMENT_CLASSE,
             TypeAnticipation.TITULARISATION, TypeAnticipation.FIN_CONTRAT, TypeAnticipation.INTEGRATION);
 }

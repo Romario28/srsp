@@ -77,7 +77,7 @@ public class ExportService {
             }
         } else if (d.ecran()==Ecran.DOSSIERS) {
             extra.addAll(List.of("TYPE_DOSSIER","DATE_PREPARATION","DATE_ECHEANCE"));
-            dossierService.pourExport(vueDe(d),d.inverse(),d.type(),d.matricule(),filtre)
+            dossierService.pourExport(vueDe(d),d.inverse(),d.parAgent(),d.multiples(),d.type(),d.matricule(),filtre)
                     .forEach(dos -> lignes.add(ligneBase(dos.getAgent(),ajouterDossier(new Object[]{dos.getType().name(),dos.getDatePreparation(),dos.getDateEcheance()},DossierResume.de(dos),aujourd))));
         } else if (d.ecran()==Ecran.INTEGRATION) {
             extra.addAll(List.of("DATE_PREPARATION","DATE_INTEGRATION","DATE_DEBUT_CONTRAT","STATUT_ACTUEL"));
@@ -92,7 +92,7 @@ public class ExportService {
             calendrier.pourExport(d.dateDebut(),d.dateFin(),d.critereDate(),d.typesCalendrier(),filtre).forEach(p->lignes.add(ligneBase(p.agent(),
                     ajouterDossier(new Object[]{p.categorie().name(),p.datePreparation(),p.dateEcheance()},p.dossier(),aujourd))));
         } else {
-            TypeAnticipation type = switch(d.ecran()) { case RETRAITE -> TypeAnticipation.DEPART_RETRAITE; case AVANCEMENT -> TypeAnticipation.AVANCEMENT; case TITULARISATION -> TypeAnticipation.TITULARISATION; case FIN_CONTRAT -> TypeAnticipation.FIN_CONTRAT; default -> throw new IllegalArgumentException("Écran non pris en charge"); };
+            TypeAnticipation type = switch(d.ecran()) { case RETRAITE -> TypeAnticipation.DEPART_RETRAITE; case AVANCEMENT -> TypeAnticipation.AVANCEMENT; case AVANCEMENT_CLASSE -> TypeAnticipation.AVANCEMENT_CLASSE; case TITULARISATION -> TypeAnticipation.TITULARISATION; case FIN_CONTRAT -> TypeAnticipation.FIN_CONTRAT; default -> throw new IllegalArgumentException("Écran non pris en charge"); };
             extra.addAll(List.of("DATE_PREPARATION","DATE_ECHEANCE","DETAILS"));
             anticipation.echeancesAvecAgent(type,d.prevenanceMois(),d.retardMois(),d.dateDebut(),d.dateFin(),d.critereDate(),filtre)
                     .forEach(ae -> lignes.add(ligneBase(ae.agent(),ajouterDossier(new Object[]{ae.ligne().datePreparation(),ae.ligne().dateEcheance(),ae.ligne().details()},ae.dossier(),aujourd))));

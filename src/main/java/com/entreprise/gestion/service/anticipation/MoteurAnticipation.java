@@ -23,6 +23,7 @@ public class MoteurAnticipation {
     private Set<String> gradesStagiaire;
 
     private final IndiceGrdCorpsRepository indiceGrdCorpsRepository;
+    private final GradeSuivantService gradeSuivantService;
 
     public List<Echeance> calculerEcheances(Agent a) {
         List<Echeance> resultats = new ArrayList<>();
@@ -59,11 +60,7 @@ public class MoteurAnticipation {
         if (gradeManquant) return anomalie(a, TypeAnomalie.GRADE_MANQUANT, "Grade manquant");
         if (corpsManquant) return anomalie(a, TypeAnomalie.CORPS_MANQUANT, "Corps manquant");
 
-        TypeAnticipation type = gradesStagiaire.contains(a.getGrade().getCode())
-                ? TypeAnticipation.TITULARISATION
-                : TypeAnticipation.AVANCEMENT;
-
-        return calculerAvancement(a, type);
+        return calculerAvancement(a);   // le type est décidé une fois l'échéance calculable
     }
 
     /**
@@ -72,7 +69,7 @@ public class MoteurAnticipation {
      * échéance = (avance_date ?: date_debut_contrat) + durée_requise(corps, grade),
      * identique pour tous les statuts (FONCTIONNAIRE, CONTRACTUEL, ELD).
      */
-    private Echeance calculerAvancement(Agent a, TypeAnticipation type) {
+    private Echeance calculerAvancement(Agent a) {
 //        boolean ancrageParContrat = (a.getAvanceDate() == null);
 //        LocalDate ancrage = ancrageParContrat ? a.getDateDebutContrat() : a.getAvanceDate();
         LocalDate ancrage =  a.getAvanceDate();
@@ -87,9 +84,19 @@ public class MoteurAnticipation {
                     + "/" + a.getGrade().getCode());
         }
 
-        return new Echeance(a.getMatricule(), nomComplet(a), type, ancrage.plusYears(duree), null);
+        return new Echeance(a.getMatricule(), nomComplet(a), typeAvancement(a), ancrage.plusYears(duree), null);
     }
 
+    // titularisation d'abord (grade stagiaire), puis classe, sinon échelon
+    private TypeAnticipation typeAvancement(Agent a) {
+        if (gradesStagiaire.contains(a.getGrade().getCode())) return TypeAnticipation.TITULARISATION;
+        return changeDeClasse(a) ? TypeAnticipation.AVANCEMENT_CLASSE : TypeAnticipation.AVANCEMENT;
+    }
+
+    private boolean changeDeClasse(Agent a) {
+        return gradeSuivantService.indexer()
+                .changeDeClasse(a.getCorps().getCode(), a.getCorps().getCategorie(), a.getGrade().getCode());
+    }
 
     private Echeance calculerFinContrat(Agent a) {
         // Absence de date_fin_contrat = normal pour contrat indeterminé

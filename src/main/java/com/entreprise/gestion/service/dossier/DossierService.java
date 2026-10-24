@@ -18,7 +18,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import static com.entreprise.gestion.service.dossier.RegleDossier.fmt;
 
 @Service
@@ -30,34 +32,37 @@ public class DossierService {
     private final AuditService auditService;
 
     @Transactional(readOnly = true)
-    public Page<DossierDTO> lister(VueDossier vue, boolean inverse, TypeAnticipation type, String matricule,
-                                   FiltreAgents filtre, int page, int size) {
+    public Page<DossierDTO> lister(VueDossier vue, boolean inverse, boolean parAgent, boolean multiples, TypeAnticipation type,
+                                   String matricule, FiltreAgents filtre, int page, int size) {
         LocalDate aujourd = LocalDate.now();
-        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 200), vue.tri(inverse));
-        return dossierRepository.rechercher(vue.statuts(), type, matricule, vue.bornes(aujourd),
-                filtre == null ? FiltreAgents.AUCUN : filtre, pageable).map(d -> DossierDTO.de(d, aujourd));
+        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 200), vue.tri(inverse, parAgent));
+        Page<Dossier> trouves = dossierRepository.rechercher(vue.statuts(), type, matricule, vue.bornes(aujourd),
+                filtre == null ? FiltreAgents.AUCUN : filtre, multiples, pageable);
+        Map<String, Long> nombres = nombresParAgent(trouves.getContent());
+        return trouves.map(d -> DossierDTO.de(d, aujourd, nombres.getOrDefault(d.getAgent().getMatricule(), 1L)));
     }
 
     @Transactional(readOnly = true)
-    public SyntheseDossiersDTO synthese(TypeAnticipation type, String matricule, FiltreAgents filtre) {
+    public SyntheseDossiersDTO synthese(boolean multiples, TypeAnticipation type, String matricule, FiltreAgents filtre) {
         LocalDate aujourd = LocalDate.now();
         FiltreAgents f = filtre == null ? FiltreAgents.AUCUN : filtre;
         return new SyntheseDossiersDTO(
-                compter(VueDossier.A_TRAITER, type, matricule, f, aujourd),
-                compter(VueDossier.EN_RETARD, type, matricule, f, aujourd),
-                compter(VueDossier.EN_COURS, type, matricule, f, aujourd),
-                compter(VueDossier.SANS_SUITE, type, matricule, f, aujourd),
+                compter(VueDossier.A_TRAITER, multiples, type, matricule, f, aujourd),
+                compter(VueDossier.EN_RETARD, multiples, type, matricule, f, aujourd),
+                compter(VueDossier.EN_COURS, multiples, type, matricule, f, aujourd),
+                compter(VueDossier.SANS_SUITE, multiples, type, matricule, f, aujourd),
                 proprietes.getDateReprise());
     }
 
-    private long compter(VueDossier vue, TypeAnticipation type, String matricule, FiltreAgents filtre, LocalDate aujourd) {
-        return dossierRepository.compter(vue.statuts(), type, matricule, vue.bornes(aujourd), filtre);
+    private long compter(VueDossier vue, boolean multiples, TypeAnticipation type, String matricule, FiltreAgents filtre, LocalDate aujourd) {
+        return dossierRepository.compter(vue.statuts(), type, matricule, vue.bornes(aujourd), filtre, multiples);
     }
 
     @Transactional(readOnly = true)
-    public List<Dossier> pourExport(VueDossier vue, boolean inverse, TypeAnticipation type, String matricule, FiltreAgents filtre) {
+    public List<Dossier> pourExport(VueDossier vue, boolean inverse, boolean parAgent, boolean multiples,
+                                    TypeAnticipation type, String matricule, FiltreAgents filtre) {
         return dossierRepository.rechercherTous(vue.statuts(), type, matricule, vue.bornes(LocalDate.now()),
-                filtre == null ? FiltreAgents.AUCUN : filtre, vue.tri(inverse));
+                filtre == null ? FiltreAgents.AUCUN : filtre, multiples, vue.tri(inverse, parAgent));
     }
 
     @Transactional(readOnly = true)
@@ -65,7 +70,7 @@ public class DossierService {
         Dossier d = dossierRepository.findByAgentMatriculeAndTypeAndDateEcheance(matricule, type, dateEcheance)
                 .orElseThrow(() -> new BusinessException("DOSSIER_INTROUVABLE",
                         "Aucun dossier pour cette échéance (" + matricule + ", " + type + ", " + fmt(dateEcheance) + ")."));
-        return DossierDTO.de(d, LocalDate.now());
+        return versDto(d, LocalDate.now());
     }
 
     /** À traiter ou en retard → en cours. La date du jour est posée par le serveur. */
@@ -85,7 +90,7 @@ public class DossierService {
         dossierRepository.saveAndFlush(d);
         tracer(acteur, "DOSSIER_DEMARRE", decrire(d) + " — démarré le " + fmt(aujourd)
                 + (enRetard ? " (démarré en retard, échéance le " + fmt(d.getDateEcheance()) + ")" : ""));
-        return DossierDTO.de(d, aujourd);
+        return versDto(d, aujourd);
     }
 
     @Transactional
@@ -99,7 +104,7 @@ public class DossierService {
         d.setMotifSansSuite(nettoye);
         dossierRepository.saveAndFlush(d);
         tracer(acteur, "DOSSIER_SANS_SUITE", decrire(d) + " — motif : " + nettoye + " (statut : " + avant + " → " + d.getStatut() + ")");
-        return DossierDTO.de(d, LocalDate.now());
+        return versDto(d, LocalDate.now());
     }
 
     @Transactional
@@ -111,7 +116,19 @@ public class DossierService {
         d.setStatut(RegleDossier.statutApresReouverture(d));
         dossierRepository.saveAndFlush(d);
         tracer(acteur, "DOSSIER_REOUVERT", decrire(d) + " — rouvert (ancien motif : " + motif + ") → " + d.getStatut());
-        return DossierDTO.de(d, LocalDate.now());
+        return versDto(d, LocalDate.now());
+    }
+
+    private DossierDTO versDto(Dossier d, LocalDate aujourd) {
+        return DossierDTO.de(d, aujourd, dossierRepository.countByAgentMatricule(d.getAgent().getMatricule()));
+    }
+
+    private Map<String, Long> nombresParAgent(List<Dossier> dossiers) {
+        List<String> matricules = dossiers.stream().map(d -> d.getAgent().getMatricule()).distinct().toList();
+        if (matricules.isEmpty()) return Map.of();
+        Map<String, Long> nombres = new HashMap<>();
+        dossierRepository.compterParAgent(matricules).forEach(n -> nombres.put(n.matricule(), n.nombre()));
+        return nombres;
     }
 
     private Dossier trouver(Long id) {

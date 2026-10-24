@@ -5,7 +5,9 @@ import java.util.Arrays;
 
 public enum Ecran {
     CALENDRIER("calendrier", "Calendrier"), RETRAITE("retraite", "Départs à la retraite"),
-    AVANCEMENT("avancement", "Avancements"), TITULARISATION("titularisation", "Titularisations"),
+    AVANCEMENT("avancement", "Avancements"),
+    AVANCEMENT_CLASSE("avancement-classe", "Avancements de classe"),
+    TITULARISATION("titularisation", "Titularisations"),
     FIN_CONTRAT("fin-contrat", "Fins de contrat"), INTEGRATION("integration", "Intégrations"),
     ANOMALIES("anomalies", "Anomalies"), ALERTES("alertes", "Alertes"), DOSSIERS("dossiers", "Dossiers");
     private final String slug, libelle;
