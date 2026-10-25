@@ -5,10 +5,22 @@ import com.entreprise.gestion.service.dossier.RegleDossier;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 
-public record DossierDTO(Long id, String matricule, String nomComplet, StatutAgent statutAgent,
-        String corpsCode, String categorieCode, String gradeCode, TypeAnticipation type,
-        LocalDate datePreparation, LocalDate dateEcheance, StatutDossier statut,
-        LocalDate dateDemarrage, String motifSansSuite, boolean enRetard, Long joursRetard,
+public record DossierDTO(
+        Long id,
+        String matricule,
+        String nomComplet,
+        StatutAgent statutAgent,
+        String corpsCode,
+        String categorieCode,
+        String gradeCode,
+        TypeAnticipation type,
+        LocalDate datePreparation,
+        LocalDate dateEcheance,
+        StatutDossier statut,
+        LocalDate dateDemarrage,
+        String motifSansSuite,
+        boolean enRetard,
+        Long joursRetard,
         long nbDossiersAgent) {   // total des dossiers de l'agent, tous états confondus
 
     public static DossierDTO de(Dossier d, LocalDate aujourd, long nbDossiersAgent) {
