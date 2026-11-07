@@ -9,7 +9,8 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class AuditDTO {
     private Long id;
-    private String email;
+    private String email;        // null si l'action vient du système
+    private String acteur;       // [NOUVEAU] « Prénom Nom (matricule …) » si lié à un agent, sinon l'e-mail
     private String action;
     private LocalDateTime dateAction;
     private String details;

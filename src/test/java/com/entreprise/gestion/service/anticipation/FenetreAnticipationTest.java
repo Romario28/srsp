@@ -30,7 +30,7 @@ class FenetreAnticipationTest {
 
     @Test
     void finDeMoisRamenéeAuDernierJourValide() {
-        var fenetre = new FenetreAnticipation(1, 0);
+        var fenetre = new FenetreAnticipation(1, 1);
         assertThat(fenetre.datePreparation(LocalDate.of(2026, 2, 28)))
                 .isEqualTo(LocalDate.of(2026, 1, 28));
         assertThat(fenetre.dateFinTolerance(LocalDate.of(2026, 1, 31)))

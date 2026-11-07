@@ -10,6 +10,7 @@ import com.entreprise.gestion.exception.BusinessException;
 import com.entreprise.gestion.repository.anticipation.DossierRepository;
 import com.entreprise.gestion.security.UserDetailsImpl;
 import com.entreprise.gestion.service.AuditService;
+import com.entreprise.gestion.service.acces.ControleAcces;
 import com.entreprise.gestion.service.anticipation.FiltreAgents;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -30,6 +31,7 @@ public class DossierService {
     private final DossierRepository dossierRepository;
     private final DossierProperties proprietes;
     private final AuditService auditService;
+    private final ControleAcces controleAcces;
 
     @Transactional(readOnly = true)
     public Page<DossierDTO> lister(VueDossier vue, boolean inverse, boolean parAgent, boolean multiples, TypeAnticipation type,
@@ -77,6 +79,7 @@ public class DossierService {
     @Transactional
     public DossierDTO demarrer(Long id, UserDetailsImpl acteur) {
         Dossier d = trouver(id);
+        controleAcces.verifierActionSurDossier(acteur, d.getAgent(), "démarrer");
         if (d.getStatut() == StatutDossier.EN_COURS) {
             throw new BusinessException("DEJA_DEMARRE", "Ce dossier est déjà en cours : actualisez la liste.");
         }
@@ -96,6 +99,7 @@ public class DossierService {
     @Transactional
     public DossierDTO classerSansSuite(Long id, String motif, UserDetailsImpl acteur) {
         Dossier d = trouver(id);
+        controleAcces.verifierActionSurDossier(acteur, d.getAgent(), "classer sans suite");
         String nettoye = motif == null ? "" : motif.trim();
         if (nettoye.isEmpty()) throw new BusinessException("MOTIF_REQUIS", "Le motif est obligatoire pour classer un dossier sans suite.");
         if (d.getStatut() == StatutDossier.SANS_SUITE) throw new BusinessException("DOSSIER_CLOS", "Ce dossier est déjà classé sans suite.");
@@ -110,6 +114,7 @@ public class DossierService {
     @Transactional
     public DossierDTO reouvrir(Long id, UserDetailsImpl acteur) {
         Dossier d = trouver(id);
+        controleAcces.verifierActionSurDossier(acteur, d.getAgent(), "rouvrir");
         if (d.getStatut() != StatutDossier.SANS_SUITE) throw new BusinessException("DOSSIER_NON_CLASSE", "Ce dossier n'est pas classé sans suite.");
         String motif = d.getMotifSansSuite();
         d.setMotifSansSuite(null);

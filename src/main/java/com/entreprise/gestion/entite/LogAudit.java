@@ -53,6 +53,9 @@ public class LogAudit {
     @Column(name = "adresse_ip", length = 45)
     private String adresseIp;
 
+    // [NOUVEAU] libellé de l'acteur figé à l'écriture (nom complet + matricule si lié) : la trace reste immuable
+    @Column(name = "acteur_libelle", length = 255)
+    private String acteurLibelle;
 
     @Column(name = "details", length = 500, columnDefinition = "text")
     private String details;

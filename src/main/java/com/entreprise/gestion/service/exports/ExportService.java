@@ -7,7 +7,6 @@ import com.entreprise.gestion.repository.anticipation.AlerteRepository;
 import com.entreprise.gestion.repository.referentiel.AgentRepository;
 import com.entreprise.gestion.entite.anticipation.Alerte;
 import com.entreprise.gestion.service.AuditService;
-import com.entreprise.gestion.service.VisibiliteService;
 import com.entreprise.gestion.service.anticipation.*;
 import com.entreprise.gestion.service.dossier.CleDossier;
 import com.entreprise.gestion.service.dossier.DossierResume;
@@ -38,23 +37,22 @@ public class ExportService {
             "TYPE_ANOMALIE",44,"ACQUITTEE_PAR",32,"DOSSIER_MOTIF_SANS_SUITE",40);
     private final AnticipationService anticipation;
     private final CalendrierService calendrier;
-    private final VisibiliteService visibilite;
     private final AuditService audit;
     private final AlerteRepository alerteRepository;
     private final AgentRepository agentRepository;
     private final SuiviDossiers suiviDossiers;
     private final DossierService dossierService;
 
-    public ExportService(AnticipationService anticipation, CalendrierService calendrier, VisibiliteService visibilite, AuditService audit,
+    public ExportService(AnticipationService anticipation, CalendrierService calendrier, AuditService audit,
                          AlerteRepository alerteRepository, AgentRepository agentRepository,SuiviDossiers suiviDossiers,
                          DossierService dossierService) {
-        this.anticipation=anticipation; this.calendrier=calendrier; this.visibilite=visibilite; this.audit=audit;
+        this.anticipation=anticipation; this.calendrier=calendrier; this.audit=audit;
         this.alerteRepository=alerteRepository; this.agentRepository=agentRepository; this.suiviDossiers=suiviDossiers; this.dossierService=dossierService;
     }
 
     @Transactional(readOnly = true)
     public Fichier preparer(DemandeExport d, UserDetailsImpl acteur, String ip) {
-        if (!visibilite.resoudreScope(acteur).isAccesTotal()) throw new AccessDeniedException("L'export est réservé aux comptes à accès total.");
+        if (!acteur.hasRole("ADMIN")) throw new AccessDeniedException("L'export est réservé aux comptes à accès total.");
         List<Object[]> lignes = new ArrayList<>();
         List<String> extra = new ArrayList<>();
         FiltreAgents filtre = d.filtre()==null ? FiltreAgents.AUCUN : d.filtre();

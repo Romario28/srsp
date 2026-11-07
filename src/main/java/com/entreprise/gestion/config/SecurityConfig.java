@@ -5,7 +5,6 @@ import com.entreprise.gestion.security.UserDetailsServiceImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -44,26 +43,11 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/login").permitAll()
                         .requestMatchers("/h2-console/**").permitAll()
 
-                        // Employés — filtrage fin (chemin, chef, délégations) délégué à EmployeService
-                        .requestMatchers(HttpMethod.GET, "/api/employes", "/api/employes/**")
-                        .hasAnyRole("ADMIN", "EMPLOYE")
-                        .requestMatchers(HttpMethod.POST, "/api/employes").hasAnyRole("ADMIN", "EMPLOYE")
-                        .requestMatchers(HttpMethod.PUT, "/api/employes/**").hasAnyRole("ADMIN", "EMPLOYE")
-                        .requestMatchers(HttpMethod.DELETE, "/api/employes/**").hasRole("ADMIN")
-
-                        // Organigramme — lecture ouverte, structure ADMIN uniquement
-                        .requestMatchers(HttpMethod.GET, "/api/departements/**").authenticated()
-                        .requestMatchers(HttpMethod.POST, "/api/departements/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.PATCH, "/api/departements/**").hasRole("ADMIN")
-
-                        // Délégations — ouvert, autorisation vérifiée dans le service
-                        .requestMatchers("/api/portees-deleguees/**").hasAnyRole("ADMIN", "EMPLOYE")
-
                         .requestMatchers("/api/utilisateurs/**").hasRole("ADMIN")
                         .requestMatchers("/api/audit/**").hasRole("ADMIN")
                         .requestMatchers("/api/anticipation/**", "/api/alertes/**").hasRole("ADMIN")
                         .requestMatchers("/error").permitAll()
-                        .requestMatchers("/api/imports/**").hasRole("ADMIN")  // ou .hasRole("ADMIN")
+                        .requestMatchers("/api/imports/**").hasRole("ADMIN")
                         .requestMatchers("/api/exports/**").hasRole("ADMIN")
                         .requestMatchers("/api/dossiers/**").hasRole("ADMIN")
                         .requestMatchers("/api/dashboard/**").hasRole("ADMIN")

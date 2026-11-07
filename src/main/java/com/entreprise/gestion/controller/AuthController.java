@@ -4,6 +4,7 @@ import com.entreprise.gestion.dto.LoginRequest;
 import com.entreprise.gestion.dto.LoginResponse;
 import com.entreprise.gestion.security.UserDetailsImpl;
 import com.entreprise.gestion.service.AuthService;
+import com.entreprise.gestion.service.acces.ControleAcces;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +25,7 @@ import java.util.stream.Collectors;
 public class AuthController {
 
     private final AuthService authService;
+    private final ControleAcces controleAcces;
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest req,
@@ -54,43 +56,18 @@ public class AuthController {
         return ResponseEntity.ok().build();
     }
 
-    /**
-     * GET /api/auth/me
-     *
-     * AVANT : auth.getName() pour l'email, pas d'accès à l'entité.
-     * APRÈS : @AuthenticationPrincipal donne tout — id, nomComplet, groupe,
-     *         employé, statut — sans aucune requête BDD.
-     */
-   /* @GetMapping("/me")
-    public ResponseEntity<?> me(
-            @AuthenticationPrincipal UserDetailsImpl principal) {
-
-        return ResponseEntity.ok(Map.of(
-                "id",                   principal.getId(),
-                "email",                principal.getEmail(),
-                "nomComplet",           principal.getNomComplet(),
-                "statut",               principal.getStatut().name(),
-                "nomGroupe",            principal.getNomGroupe() != null ? principal.getNomGroupe() : "",
-                "roles",                principal.getAuthorities().stream()
-                        .map(GrantedAuthority::getAuthority).collect(Collectors.toList()),
-                "dateDerniereConnexion", principal.getDateDerniereConnexion() != null
-                        ? principal.getDateDerniereConnexion().toString()
-                        : ""
-        ));
-    }*/
-
     @GetMapping("/me")
     public ResponseEntity<?> me(@AuthenticationPrincipal UserDetailsImpl principal) {
-        return ResponseEntity.ok(Map.of(
+        return ResponseEntity.ok(Map.<String, Object>of(
                 "id", principal.getId(),
                 "email", principal.getEmail(),
                 "nomComplet", principal.getNomComplet(),
                 "statut", principal.getStatut().name(),
-                "nomDepartement", principal.getNomDepartement() != null ? principal.getNomDepartement() : "",
-                "roles", principal.getAuthorities().stream()
-                        .map(GrantedAuthority::getAuthority).collect(Collectors.toList()),
+                "matriculeAgent", principal.getMatriculeAgent() != null ? principal.getMatriculeAgent() : "",
+                "roles", principal.getAuthorities().stream().map(GrantedAuthority::getAuthority).collect(Collectors.toList()),
                 "dateDerniereConnexion", principal.getDateDerniereConnexion() != null
-                        ? principal.getDateDerniereConnexion().toString() : ""
-        ));
+                        ? principal.getDateDerniereConnexion().toString() : "",
+                "peutTraiterSonDossier", controleAcces.exempteDuConflit(principal),
+                "perimetre", controleAcces.perimetreDe(principal)));
     }
 }

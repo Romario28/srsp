@@ -28,7 +28,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
             throws UsernameNotFoundException {
 
         Utilisateur utilisateur = utilisateurRepository
-                .findByEmailWithRolesAndRelations(email)  
+                .findByEmailWithRoles(email)   // [MODIFIÉ]
                 .orElseThrow(() ->
                         new UsernameNotFoundException("Utilisateur introuvable : " + email));
 

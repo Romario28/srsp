@@ -13,36 +13,21 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * MIGRATION UserDetailsImpl :
-
- * Avant :  auditService.log(auth.getName(), action, details, ip)
- *          → AuditService faisait findByEmail() en interne pour attacher l'entité
-
- * Après :  auditService.logAvecEntite(principal.getUtilisateur(), action, details, ip)
- *          → L'entité arrive directement depuis le principal, zéro requête BDD
-
- * L'ancienne signature log(String email, ...) est conservée pour compatibilité
- * (DataInitializer, logout sans principal chargé, etc.)
+ * L'action est toujours effectuée par l'UTILISATEUR. Si ce compte est lié à un agent, le journal retient son nom
+ * complet et son matricule (libellé figé à l'écriture) au lieu de son seul e-mail.
  */
 @Service
 @RequiredArgsConstructor
 public class AuditService {
 
-    private final LogAuditRepository   logAuditRepository;
+    private final LogAuditRepository    logAuditRepository;
     private final UtilisateurRepository utilisateurRepository;
 
-    // ── Nouvelle méthode principale (migration UserDetailsImpl) ──────────────
-
-    /**
-     * Log avec l'entité Utilisateur directement disponible.
-     * Utilisé quand on a déjà le principal (controllers, services post-auth).
-     * Zéro requête BDD supplémentaire.
-     */
     @Transactional
-    public void logAvecEntite(Utilisateur utilisateur, String action,
-                              String details, String ip) {
+    public void logAvecEntite(Utilisateur utilisateur, String action, String details, String ip) {
         LogAudit log = LogAudit.builder()
                 .utilisateur(utilisateur)
+                .acteurLibelle(utilisateur != null ? utilisateur.libelleActeur() : null)   // [NOUVEAU]
                 .action(action)
                 .details(details)
                 .adresseIp(ip)
@@ -50,27 +35,18 @@ public class AuditService {
         logAuditRepository.save(log);
     }
 
-    // ── Méthode historique conservée pour compatibilité ──────────────────────
-
-    /**
-     * Log avec l'email (fait un findByEmail en interne).
-     * Conservé pour : logout, DataInitializer, cas sans principal chargé.
-     */
+    /** Conservée pour : logout, génération de dossiers (email null = système). */
     @Transactional
     public void log(String email, String action, String details, String ip) {
-        LogAudit log = LogAudit.builder()
-                .action(action)
-                .details(details)
-                .adresseIp(ip)
-                .build();
+        LogAudit log = LogAudit.builder().action(action).details(details).adresseIp(ip).build();
         if (email != null) {
-            utilisateurRepository.findByEmail(email)
-                    .ifPresent(log::setUtilisateur);
+            utilisateurRepository.findByEmail(email).ifPresent(u -> {
+                log.setUtilisateur(u);
+                log.setActeurLibelle(u.libelleActeur());   // [NOUVEAU]
+            });
         }
         logAuditRepository.save(log);
     }
-
-    // ── Lecture ──────────────────────────────────────────────────────────────
 
     @Transactional(readOnly = true)
     public List<AuditDTO> findAll() {
@@ -79,13 +55,10 @@ public class AuditService {
     }
 
     private AuditDTO toDTO(LogAudit l) {
-        return new AuditDTO(
-                l.getId(),
-                l.getUtilisateur() != null ? l.getUtilisateur().getEmail() : "système",
-                l.getAction(),
-                l.getDateAction(),
-                l.getDetails(),
-                l.getAdresseIp()
-        );
+        Utilisateur u = l.getUtilisateur();
+        // Libellé figé ; pour les lignes antérieures à cette évolution, repli sur le libellé actuel du compte
+        String acteur = l.getActeurLibelle() != null ? l.getActeurLibelle() : (u != null ? u.libelleActeur() : "Système");
+        return new AuditDTO(l.getId(), u != null ? u.getEmail() : null, acteur,
+                l.getAction(), l.getDateAction(), l.getDetails(), l.getAdresseIp());
     }
 }

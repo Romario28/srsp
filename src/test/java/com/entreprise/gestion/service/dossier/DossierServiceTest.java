@@ -11,6 +11,7 @@ import com.entreprise.gestion.exception.BusinessException;
 import com.entreprise.gestion.repository.anticipation.DossierRepository;
 import com.entreprise.gestion.security.UserDetailsImpl;
 import com.entreprise.gestion.service.AuditService;
+import com.entreprise.gestion.service.acces.ControleAcces;
 import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -25,6 +26,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -34,6 +36,7 @@ class DossierServiceTest {
     @Mock DossierRepository dossierRepository;
     @Mock DossierProperties proprietes;
     @Mock AuditService auditService;
+    @Mock ControleAcces controleAcces;
     @InjectMocks DossierService service;
 
     private final UserDetailsImpl acteur = new UserDetailsImpl(Utilisateur.builder().id(1L).email("admin@entreprise.mg").build());
@@ -109,5 +112,14 @@ class DossierServiceTest {
     @Test void reouvrirRefuseUnDossierNonClasse() {
         trouve(StatutDossier.EN_COURS, LocalDate.now().plusDays(10), LocalDate.now());
         refuse(() -> service.reouvrir(7L, acteur), "DOSSIER_NON_CLASSE");
+    }
+
+    @Test void unConflitBloqueDemarrerClasserEtRouvrir() {
+        trouve(StatutDossier.EN_ATTENTE_DE_TRAITEMENT, LocalDate.now().plusDays(10), null);
+        doThrow(new BusinessException("DOSSIER_PROPRE", "Conflit")).when(controleAcces).verifierActionSurDossier(any(), any(), any());
+        refuse(() -> service.demarrer(7L, acteur), "DOSSIER_PROPRE");
+        refuse(() -> service.classerSansSuite(7L, "motif", acteur), "DOSSIER_PROPRE");
+        refuse(() -> service.reouvrir(7L, acteur), "DOSSIER_PROPRE");
+        verify(dossierRepository, never()).saveAndFlush(any());
     }
 }

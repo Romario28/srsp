@@ -1,6 +1,7 @@
 package com.entreprise.gestion.security;
 
-import com.entreprise.gestion.entite.*;
+import com.entreprise.gestion.entite.StatutUtilisateur;
+import com.entreprise.gestion.entite.Utilisateur;
 import lombok.Getter;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -16,21 +17,6 @@ import java.util.stream.Collectors;
  *
  * Encapsule l'entité Utilisateur et l'expose directement depuis le SecurityContext,
  * évitant les requêtes BDD répétées dans les controllers et services.
- *
- * Usage dans les controllers :
- *
- *   // Injection directe via @AuthenticationPrincipal (recommandé)
- *   @GetMapping("/profil")
- *   public ResponseEntity<?> getProfil(
- *           @AuthenticationPrincipal UserDetailsImpl principal) {
- *       Long id          = principal.getId();
- *       Utilisateur u    = principal.getUtilisateur();
- *       Employe emp      = principal.getEmploye();     // peut être null
- *       String nomGroupe = principal.getNomGroupe();   // peut être null
- *   }
- *
- *   // Ou via Authentication (si @AuthenticationPrincipal n'est pas disponible)
- *   UserDetailsImpl principal = (UserDetailsImpl) auth.getPrincipal();
  */
 @Getter
 public class UserDetailsImpl implements UserDetails {
@@ -76,19 +62,11 @@ public class UserDetailsImpl implements UserDetails {
         return utilisateur.getStatut() == StatutUtilisateur.ACTIF;
     }
 
-    /**
-     * Pourrait vérifier une date d'expiration de compte (ex: comptes temporaires).
-     * Pour l'instant : toujours vrai.
-     */
     @Override
     public boolean isAccountNonExpired() {
         return true;
     }
 
-    /**
-     * Pourrait retourner false après N tentatives échouées (brute-force protection).
-     * Pour l'instant : toujours vrai.
-     */
     @Override
     public boolean isAccountNonLocked() {
         return utilisateur.getStatut() != StatutUtilisateur.SUSPENDU;
@@ -100,7 +78,6 @@ public class UserDetailsImpl implements UserDetails {
     }
 
     // ── Raccourcis pratiques pour les controllers et services ────────────────
-    // Évite de faire principal.getUtilisateur().getXxx() partout.
 
     public Long getId() {
         return utilisateur.getId();
@@ -114,43 +91,19 @@ public class UserDetailsImpl implements UserDetails {
         return utilisateur.getStatut();
     }
 
-    /**
-     * Retourne le nom complet de l'employé lié, ou l'email si aucun employé.
-     * Utilisé pour les logs d'audit et les réponses REST.
-     */
     public String getNomComplet() {
-        Employe emp = utilisateur.getEmploye();
-        return emp != null ? emp.getPrenom() + " " + emp.getNom() : utilisateur.getEmail();
+        String nom = utilisateur.nomComplet();
+        return nom.isEmpty() ? utilisateur.getEmail() : nom;
     }
 
-    /**
-     * Retourne l'employé lié, ou null si c'est un compte système (ex: admin pur).
-     */
-    public Employe getEmploye() {
-        return utilisateur.getEmploye();
+    public String getMatriculeAgent() {
+        return utilisateur.getMatriculeAgent();
     }
 
-
-
-    public String getNomDepartement() {
-        Employe emp = utilisateur.getEmploye();
-        if (emp == null || emp.getDepartement() == null) return null;
-        Departement d = emp.getDepartement();
-        return d.getNomDepartement();
-    }
-
-
-    /**
-     * Retourne la date de dernière connexion, utile pour les réponses /me.
-     */
     public LocalDateTime getDateDerniereConnexion() {
         return utilisateur.getDateDerniereConnexion();
     }
 
-    /**
-     * Vérifie si le principal possède un rôle donné.
-     * Exemple : principal.hasRole("ADMIN")
-     */
     public boolean hasRole(String role) {
         return authorities.stream()
                 .anyMatch(a -> a.getAuthority().equals("ROLE_" + role));

@@ -9,7 +9,6 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -18,6 +17,8 @@ public interface UtilisateurRepository extends JpaRepository<Utilisateur, Long> 
     Optional<Utilisateur> findByEmail(String email);
 
     boolean existsByEmail(String email);
+
+    Optional<Utilisateur> findByMatriculeAgent(String matriculeAgent);   // [NOUVEAU]
 
     /** Liste API : exclut structurellement les comptes système. */
     Page<Utilisateur> findByCompteSystemeFalse(Pageable pageable);
@@ -36,18 +37,12 @@ public interface UtilisateurRepository extends JpaRepository<Utilisateur, Long> 
         """)
     long countByRoleAdminActifExcludingSysteme();
 
-
-
     @Query("""
         SELECT u FROM Utilisateur u
         LEFT JOIN FETCH u.utilisateurRoles ur
         LEFT JOIN FETCH ur.role
-        LEFT JOIN FETCH u.employe e
-        LEFT JOIN FETCH e.departement
         WHERE u.email = :email
         """)
-    Optional<Utilisateur> findByEmailWithRolesAndRelations(@Param("email") String email);
-
-
+    Optional<Utilisateur> findByEmailWithRoles(@Param("email") String email);
 
 }
