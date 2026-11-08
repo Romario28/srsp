@@ -14,6 +14,8 @@ import com.entreprise.gestion.service.anticipation.Echeance;
 import com.entreprise.gestion.service.anticipation.ConfigurationDelaiService;
 import com.entreprise.gestion.service.anticipation.FenetreAnticipation;
 import com.entreprise.gestion.service.anticipation.FiltreAgents;
+import com.entreprise.gestion.service.acces.Perimetre;
+import com.entreprise.gestion.service.acces.PerimetreCourant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -40,10 +42,12 @@ class DashboardServiceTest {
     @Mock AgentRepository agentRepository;
     @Mock MoteurAnticipation moteur;
     @Mock ConfigurationDelaiService configurationDelaiService;
+    @Mock PerimetreCourant perimetreCourant;
     @InjectMocks DashboardService service;
 
     @BeforeEach
     void configurerAgeLegal() {
+        lenient().when(perimetreCourant.get()).thenReturn(Perimetre.tout());
         lenient().when(moteur.ageRetraite()).thenReturn(60);
         lenient().when(moteur.dateRetraite(any())).thenAnswer(invocation -> {
             Agent agent = invocation.getArgument(0);

@@ -14,6 +14,8 @@ import com.entreprise.gestion.service.anticipation.Echeance;
 import com.entreprise.gestion.service.anticipation.FenetreAnticipation;
 import com.entreprise.gestion.service.anticipation.FiltreAgents;
 import com.entreprise.gestion.service.anticipation.MoteurAnticipation;
+import com.entreprise.gestion.service.acces.Perimetre;
+import com.entreprise.gestion.service.acces.PerimetreCourant;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,6 +34,7 @@ public class DashboardService {
     private final AgentRepository agentRepository;
     private final MoteurAnticipation moteur;
     private final ConfigurationDelaiService configurationDelaiService;
+    private final PerimetreCourant perimetreCourant;
 
     private record CleAge(int tranche, String sexe, String categorie) {}
 
@@ -123,7 +126,8 @@ public class DashboardService {
     /** Agents en activité qui passent le périmètre ; les attributs absents ne correspondent pas à un filtre posé. */
     private List<Agent> actifsDuPerimetre(FiltreAgents filtre) {
         FiltreAgents f = filtre == null ? FiltreAgents.AUCUN : filtre;
-        return agentRepository.findAllActifs().stream().filter(f::accepte).toList();
+        Perimetre perimetre = perimetreCourant.get();
+        return agentRepository.findAllActifs().stream().filter(perimetre::autorise).filter(f::accepte).toList();
     }
 
     private static boolean dans(LocalDate date, LocalDate debut, LocalDate fin) {

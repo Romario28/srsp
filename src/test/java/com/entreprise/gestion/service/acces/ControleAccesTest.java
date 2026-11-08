@@ -42,41 +42,41 @@ class ControleAccesTest {
 
     @Test void unGestionnaireAgitDansSonPerimetre() {
         when(repo.findByUtilisateurId(2L)).thenReturn(List.of(p(DimensionPerimetre.MINISTERE, "05")));
-        assertThatCode(() -> acces.verifierActionSurDossier(acteur(2, "ROLE_GESTIONNAIRE", null), agent("111111", "05", null), "démarrer"))
+        assertThatCode(() -> acces.verifierActionSurDossier(acteur(2, "ROLE_RH", null), agent("111111", "05", null), "démarrer"))
                 .doesNotThrowAnyException();
     }
     @Test void horsPerimetreEstRefuse() {
         when(repo.findByUtilisateurId(2L)).thenReturn(List.of(p(DimensionPerimetre.MINISTERE, "05")));
-        assertThatThrownBy(() -> acces.verifierActionSurDossier(acteur(2, "ROLE_GESTIONNAIRE", null), agent("111111", "06", null), "démarrer"))
+        assertThatThrownBy(() -> acces.verifierActionSurDossier(acteur(2, "ROLE_RH", null), agent("111111", "06", null), "démarrer"))
                 .isInstanceOf(AccessDeniedException.class);
     }
     @Test void sansAucuneValeurOnNeVoitRien() {
         when(repo.findByUtilisateurId(2L)).thenReturn(List.of());
-        assertThatThrownBy(() -> acces.verifierActionSurDossier(acteur(2, "ROLE_GESTIONNAIRE", null), agent("111111", "05", null), "rouvrir"))
+        assertThatThrownBy(() -> acces.verifierActionSurDossier(acteur(2, "ROLE_RH", null), agent("111111", "05", null), "rouvrir"))
                 .isInstanceOf(AccessDeniedException.class);
     }
     @Test void uneDimensionVideNeRestreintPas() {
         when(repo.findByUtilisateurId(2L)).thenReturn(List.of(p(DimensionPerimetre.MINISTERE, "05")));
-        assertThat(acces.perimetreDe(acteur(2, "ROLE_GESTIONNAIRE", null)).autorise(agent("111111", "05", null))).isTrue();
+        assertThat(acces.perimetreDe(acteur(2, "ROLE_RH", null)).autorise(agent("111111", "05", null))).isTrue();
     }
     @Test void unAgentSansLaValeurDemandeeEstExclu() {
         when(repo.findByUtilisateurId(2L)).thenReturn(List.of(p(DimensionPerimetre.SOA, "S1")));
-        assertThat(acces.perimetreDe(acteur(2, "ROLE_GESTIONNAIRE", null)).autorise(agent("111111", "05", null))).isFalse();
+        assertThat(acces.perimetreDe(acteur(2, "ROLE_RH", null)).autorise(agent("111111", "05", null))).isFalse();
     }
     @Test void leLienNOuvreAucunDroit() {
         // compte lié à l'agent 123456, mais sans aucune valeur de périmètre : il ne voit rien, même son propre agent
         when(repo.findByUtilisateurId(2L)).thenReturn(List.of());
-        assertThatThrownBy(() -> acces.verifierActionSurDossier(acteur(2, "ROLE_GESTIONNAIRE", "123456"), agent("123456", "05", null), "démarrer"))
+        assertThatThrownBy(() -> acces.verifierActionSurDossier(acteur(2, "ROLE_RH", "123456"), agent("123456", "05", null), "démarrer"))
                 .isInstanceOf(AccessDeniedException.class);
     }
     @Test void unCompteLieNePeutPasAgirSurSonPropreDossier() {
         when(repo.findByUtilisateurId(2L)).thenReturn(List.of(p(DimensionPerimetre.MINISTERE, "05")));
-        assertThatThrownBy(() -> acces.verifierActionSurDossier(acteur(2, "ROLE_GESTIONNAIRE", "123456"), agent("123456", "05", null), "démarrer"))
+        assertThatThrownBy(() -> acces.verifierActionSurDossier(acteur(2, "ROLE_RH", "123456"), agent("123456", "05", null), "démarrer"))
                 .isInstanceOfSatisfying(BusinessException.class, e -> assertThat(e.getCode()).isEqualTo("DOSSIER_PROPRE"));
     }
     @Test void unCompteLieAgitSurLesAutresAgents() {
         when(repo.findByUtilisateurId(2L)).thenReturn(List.of(p(DimensionPerimetre.MINISTERE, "05")));
-        assertThatCode(() -> acces.verifierActionSurDossier(acteur(2, "ROLE_GESTIONNAIRE", "123456"), agent("999999", "05", null), "démarrer"))
+        assertThatCode(() -> acces.verifierActionSurDossier(acteur(2, "ROLE_RH", "123456"), agent("999999", "05", null), "démarrer"))
                 .doesNotThrowAnyException();
     }
     @Test void lAdminLieEstSoumisParDefaut() {
@@ -88,6 +88,28 @@ class ControleAccesTest {
         assertThatCode(() -> acces.verifierActionSurDossier(acteur(1, "ROLE_ADMIN", "123456"), agent("123456", null, null), "démarrer"))
                 .doesNotThrowAnyException();
         assertThat(acces.exempteDuConflit(acteur(1, "ROLE_ADMIN", null))).isTrue();
-        assertThat(acces.exempteDuConflit(acteur(2, "ROLE_GESTIONNAIRE", null))).isFalse();
+        assertThat(acces.exempteDuConflit(acteur(2, "ROLE_RH", null))).isFalse();
+    }
+
+    private static UserDetailsImpl agent(long id, String matricule, boolean droit) {
+        Utilisateur u = Utilisateur.builder().id(id).email("a" + id + "@x.mg").matriculeAgent(matricule).agirSurSonDossier(droit).build();
+        u.getUtilisateurRoles().add(UtilisateurRole.builder().utilisateur(u).role(Role.builder().nomRole("ROLE_AGENT").build()).build());
+        return new UserDetailsImpl(u);
+    }
+
+    @Test void unAgentEnLectureSeuleNeFaitRienSurSonDossier() {
+        assertThatThrownBy(() -> acces.verifierActionSurDossier(agent(3, "123456", false), agent("123456", "05", null), "démarrer"))
+                .isInstanceOfSatisfying(BusinessException.class, e -> assertThat(e.getCode()).isEqualTo("LECTURE_SEULE"));
+    }
+    @Test void unAgentAvecLeDroitAgitSurSonPropreDossier() {
+        assertThatCode(() -> acces.verifierActionSurDossier(agent(3, "123456", true), agent("123456", "05", null), "démarrer"))
+                .doesNotThrowAnyException();
+    }
+    @Test void unAgentNAgitJamaisSurLeDossierDUnAutreMemeAvecLeDroit() {
+        assertThatThrownBy(() -> acces.verifierActionSurDossier(agent(3, "123456", true), agent("999999", "05", null), "démarrer"))
+                .isInstanceOf(AccessDeniedException.class);
+    }
+    @Test void unAgentNAAucunPerimetre() {
+        assertThat(acces.perimetreDe(agent(3, "123456", true)).estVide()).isTrue();
     }
 }

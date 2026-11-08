@@ -68,6 +68,7 @@ public class AuthController {
                 "dateDerniereConnexion", principal.getDateDerniereConnexion() != null
                         ? principal.getDateDerniereConnexion().toString() : "",
                 "peutTraiterSonDossier", controleAcces.exempteDuConflit(principal),
+                "agirSurSonDossier", principal.isAgirSurSonDossier(),
                 "perimetre", controleAcces.perimetreDe(principal)));
     }
 }

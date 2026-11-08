@@ -7,4 +7,5 @@ import java.util.List;
 public record UtilisateurDetailDTO(Long id, String email, String statut, LocalDateTime dateCreation,
                                    LocalDateTime dateDerniereConnexion, String nom, String prenom,
                                    String matriculeAgent, List<String> roles, PerimetreDTO perimetre,
-                                   AgentLieDTO agentLie) {}
+                                   AgentLieDTO agentLie,
+                                   boolean agirSurSonDossier) {}

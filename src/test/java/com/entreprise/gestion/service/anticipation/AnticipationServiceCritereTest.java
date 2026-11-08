@@ -5,6 +5,8 @@ import com.entreprise.gestion.entite.anticipation.StatutAgent;
 import com.entreprise.gestion.entite.anticipation.TypeAnticipation;
 import com.entreprise.gestion.entite.anticipation.StatutDossier;
 import com.entreprise.gestion.repository.referentiel.AgentRepository;
+import com.entreprise.gestion.service.acces.Perimetre;
+import com.entreprise.gestion.service.acces.PerimetreCourant;
 import com.entreprise.gestion.service.dossier.DossierResume;
 import com.entreprise.gestion.service.dossier.EtatDossier;
 import com.entreprise.gestion.service.dossier.SuiviDossiers;
@@ -28,6 +30,7 @@ class AnticipationServiceCritereTest {
     @Mock ConfigurationDelaiService configurationDelaiService;
     @Mock GradeSuivantService gradeSuivantService;
     @Mock SuiviDossiers suiviDossiers;
+    @Mock PerimetreCourant perimetreCourant;
     @InjectMocks AnticipationService service;
 
     private final LocalDate aujourdhui=LocalDate.now();
@@ -36,6 +39,7 @@ class AnticipationServiceCritereTest {
     private final LocalDate echeanceCourant=aujourdhui.plusMonths(5).plusDays(5);
 
     @BeforeEach void preparer() {
+        when(perimetreCourant.get()).thenReturn(Perimetre.tout());
         Agent futur=agent("FUTUR"), passe=agent("PASSE"), courant=agent("COURANT");
         when(configurationDelaiService.resoudreFenetre(TYPE)).thenReturn(new FenetreAnticipation(6,2));
         when(suiviDossiers.tous()).thenReturn(Map.of());

@@ -11,6 +11,8 @@ import com.entreprise.gestion.repository.anticipation.DossierRepository;
 import com.entreprise.gestion.security.UserDetailsImpl;
 import com.entreprise.gestion.service.AuditService;
 import com.entreprise.gestion.service.acces.ControleAcces;
+import com.entreprise.gestion.service.acces.Perimetre;
+import com.entreprise.gestion.service.acces.PerimetreCourant;
 import com.entreprise.gestion.service.anticipation.FiltreAgents;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -32,6 +34,7 @@ public class DossierService {
     private final DossierProperties proprietes;
     private final AuditService auditService;
     private final ControleAcces controleAcces;
+    private final PerimetreCourant perimetreCourant;
 
     @Transactional(readOnly = true)
     public Page<DossierDTO> lister(VueDossier vue, boolean inverse, boolean parAgent, boolean multiples, TypeAnticipation type,
@@ -39,7 +42,7 @@ public class DossierService {
         LocalDate aujourd = LocalDate.now();
         Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 200), vue.tri(inverse, parAgent));
         Page<Dossier> trouves = dossierRepository.rechercher(vue.statuts(), type, matricule, vue.bornes(aujourd),
-                filtre == null ? FiltreAgents.AUCUN : filtre, multiples, pageable);
+                filtre == null ? FiltreAgents.AUCUN : filtre, multiples, perimetreCourant.get(), pageable);
         Map<String, Long> nombres = nombresParAgent(trouves.getContent());
         return trouves.map(d -> DossierDTO.de(d, aujourd, nombres.getOrDefault(d.getAgent().getMatricule(), 1L)));
     }
@@ -48,23 +51,25 @@ public class DossierService {
     public SyntheseDossiersDTO synthese(boolean multiples, TypeAnticipation type, String matricule, FiltreAgents filtre) {
         LocalDate aujourd = LocalDate.now();
         FiltreAgents f = filtre == null ? FiltreAgents.AUCUN : filtre;
+        Perimetre p = perimetreCourant.get();
         return new SyntheseDossiersDTO(
-                compter(VueDossier.A_TRAITER, multiples, type, matricule, f, aujourd),
-                compter(VueDossier.EN_RETARD, multiples, type, matricule, f, aujourd),
-                compter(VueDossier.EN_COURS, multiples, type, matricule, f, aujourd),
-                compter(VueDossier.SANS_SUITE, multiples, type, matricule, f, aujourd),
+                compter(VueDossier.A_TRAITER, multiples, type, matricule, f, p, aujourd),
+                compter(VueDossier.EN_RETARD, multiples, type, matricule, f, p, aujourd),
+                compter(VueDossier.EN_COURS, multiples, type, matricule, f, p, aujourd),
+                compter(VueDossier.SANS_SUITE, multiples, type, matricule, f, p, aujourd),
                 proprietes.getDateReprise());
     }
 
-    private long compter(VueDossier vue, boolean multiples, TypeAnticipation type, String matricule, FiltreAgents filtre, LocalDate aujourd) {
-        return dossierRepository.compter(vue.statuts(), type, matricule, vue.bornes(aujourd), filtre, multiples);
+    private long compter(VueDossier vue, boolean multiples, TypeAnticipation type, String matricule,
+                         FiltreAgents filtre, Perimetre p, LocalDate aujourd) {
+        return dossierRepository.compter(vue.statuts(), type, matricule, vue.bornes(aujourd), filtre, multiples, p);
     }
 
     @Transactional(readOnly = true)
     public List<Dossier> pourExport(VueDossier vue, boolean inverse, boolean parAgent, boolean multiples,
                                     TypeAnticipation type, String matricule, FiltreAgents filtre) {
         return dossierRepository.rechercherTous(vue.statuts(), type, matricule, vue.bornes(LocalDate.now()),
-                filtre == null ? FiltreAgents.AUCUN : filtre, multiples, vue.tri(inverse, parAgent));
+                filtre == null ? FiltreAgents.AUCUN : filtre, multiples, perimetreCourant.get(), vue.tri(inverse, parAgent));
     }
 
     @Transactional(readOnly = true)
@@ -72,6 +77,7 @@ public class DossierService {
         Dossier d = dossierRepository.findByAgentMatriculeAndTypeAndDateEcheance(matricule, type, dateEcheance)
                 .orElseThrow(() -> new BusinessException("DOSSIER_INTROUVABLE",
                         "Aucun dossier pour cette échéance (" + matricule + ", " + type + ", " + fmt(dateEcheance) + ")."));
+        perimetreCourant.exiger(d.getAgent());
         return versDto(d, LocalDate.now());
     }
 

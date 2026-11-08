@@ -11,6 +11,7 @@ import com.entreprise.gestion.service.anticipation.*;
 import com.entreprise.gestion.service.dossier.CleDossier;
 import com.entreprise.gestion.service.dossier.DossierResume;
 import com.entreprise.gestion.service.dossier.SuiviDossiers;
+import com.entreprise.gestion.service.acces.PerimetreCourant;
 import com.entreprise.gestion.service.dossier.DossierService;
 import com.entreprise.gestion.service.dossier.VueDossier;
 import org.apache.poi.ss.usermodel.*;
@@ -42,17 +43,19 @@ public class ExportService {
     private final AgentRepository agentRepository;
     private final SuiviDossiers suiviDossiers;
     private final DossierService dossierService;
+    private final PerimetreCourant perimetreCourant;
 
     public ExportService(AnticipationService anticipation, CalendrierService calendrier, AuditService audit,
                          AlerteRepository alerteRepository, AgentRepository agentRepository,SuiviDossiers suiviDossiers,
-                         DossierService dossierService) {
+                         DossierService dossierService, PerimetreCourant perimetreCourant) {
         this.anticipation=anticipation; this.calendrier=calendrier; this.audit=audit;
         this.alerteRepository=alerteRepository; this.agentRepository=agentRepository; this.suiviDossiers=suiviDossiers; this.dossierService=dossierService;
+        this.perimetreCourant=perimetreCourant;
     }
 
     @Transactional(readOnly = true)
     public Fichier preparer(DemandeExport d, UserDetailsImpl acteur, String ip) {
-        if (!acteur.hasRole("ADMIN")) throw new AccessDeniedException("L'export est réservé aux comptes à accès total.");
+        if (!acteur.accedeAnticipation()) throw new AccessDeniedException("Export non autorisé pour ce profil.");
         List<Object[]> lignes = new ArrayList<>();
         List<String> extra = new ArrayList<>();
         FiltreAgents filtre = d.filtre()==null ? FiltreAgents.AUCUN : d.filtre();
@@ -60,7 +63,7 @@ public class ExportService {
         boolean avecDossier=d.ecran()!=Ecran.ANOMALIES;
         if (d.ecran()==Ecran.ALERTES) {
             extra.addAll(List.of("TYPE_ALERTE","DATE_PREPARATION","DATE_ECHEANCE","STATUT_ALERTE","DATE_DETECTION","DATE_ACQUITTEMENT","ACQUITTEE_PAR"));
-            List<Alerte> alertes=alerteRepository.rechercher(d.type(),d.statutAlerte(),d.matricule(),filtre,Pageable.unpaged()).getContent();
+            List<Alerte> alertes=alerteRepository.rechercher(d.type(),d.statutAlerte(),d.matricule(),filtre,perimetreCourant.get(),Pageable.unpaged()).getContent();
             Map<String,Agent> agents=new HashMap<>();
             List<String> matricules=alertes.stream().map(Alerte::getMatriculeAgent).distinct().toList();
             for(int i=0;i<matricules.size();i+=500) agentRepository.findAvecReferences(matricules.subList(i,Math.min(i+500,matricules.size()))).forEach(a->agents.put(a.getMatricule(),a));

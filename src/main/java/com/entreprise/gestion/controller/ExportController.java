@@ -23,7 +23,7 @@ import java.util.Set;
 @RestController
 @RequestMapping("/api/exports")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("hasAnyRole('ADMIN','RH','CHEF')")
 public class ExportController {
     private static final String XLSX="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
     private final ExportService exportService;

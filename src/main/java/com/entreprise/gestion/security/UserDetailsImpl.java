@@ -108,4 +108,13 @@ public class UserDetailsImpl implements UserDetails {
         return authorities.stream()
                 .anyMatch(a -> a.getAuthority().equals("ROLE_" + role));
     }
+
+    public boolean isAgirSurSonDossier() {
+        return utilisateur.isAgirSurSonDossier();
+    }
+
+    /** profils qui accèdent à l'anticipation : tout pour l'ADMIN, le périmètre du compte pour RH et Chef */
+    public boolean accedeAnticipation() {
+        return hasRole("ADMIN") || hasRole("RH") || hasRole("CHEF");
+    }
 }

@@ -26,16 +26,19 @@ public class UtilisateurController {
     private final UtilisateurService utilisateurService;
 
     @GetMapping
-    public ResponseEntity<Page<UtilisateurDTO>> getAll(@PageableDefault(size = 20, sort = "email") Pageable pageable) {
-        return ResponseEntity.ok(utilisateurService.findAll(pageable));
+    @PreAuthorize("hasAnyRole('ADMIN','CHEF')")
+    public ResponseEntity<Page<UtilisateurDTO>> getAll(@PageableDefault(size = 20, sort = "email") Pageable pageable,
+                                                       @AuthenticationPrincipal UserDetailsImpl principal) {
+        return ResponseEntity.ok(utilisateurService.findAll(pageable, principal));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<UtilisateurDetailDTO> getById(@PathVariable Long id) {
-        return ResponseEntity.ok(utilisateurService.findById(id));
+    @PreAuthorize("hasAnyRole('ADMIN','CHEF')")
+    public ResponseEntity<UtilisateurDetailDTO> getById(@PathVariable Long id,
+                                                        @AuthenticationPrincipal UserDetailsImpl principal) {
+        return ResponseEntity.ok(utilisateurService.findById(id, principal));
     }
 
-    // [NOUVEAU] aperçu de l'agent d'un matricule saisi (formulaire de compte)
     @GetMapping("/agents/{matricule}")
     public ResponseEntity<AgentLieDTO> apercuAgent(@PathVariable String matricule) {
         return ResponseEntity.ok(utilisateurService.apercuAgent(matricule));
@@ -47,7 +50,6 @@ public class UtilisateurController {
         return ResponseEntity.status(HttpStatus.CREATED).body(utilisateurService.create(req, principal));
     }
 
-    // [NOUVEAU]
     @PutMapping("/{id}")
     public ResponseEntity<UtilisateurDetailDTO> update(@PathVariable Long id, @Valid @RequestBody UpdateUtilisateurRequest req,
                                                        @AuthenticationPrincipal UserDetailsImpl principal) {

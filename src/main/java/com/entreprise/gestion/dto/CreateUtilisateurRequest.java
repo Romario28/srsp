@@ -23,8 +23,7 @@ public class CreateUtilisateurRequest {
     /** Lien informatif vers un agent (facultatif). N'ouvre aucun droit. */
     @Size(max = 20) private String matriculeAgent;
 
-    private List<String> roles;          // vide : ROLE_GESTIONNAIRE
-    private PerimetreDTO perimetre;      // [NOUVEAU] seule source des droits
-
-    // [SUPPRIMÉ] private Long idEmploye;
+    private List<String> roles;          // vide : ROLE_AGENT
+    private PerimetreDTO perimetre;
+    private boolean agirSurSonDossier;   // profil Agent seulement ; ignoré sinon
 }

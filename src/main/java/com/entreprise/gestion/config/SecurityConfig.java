@@ -5,6 +5,7 @@ import com.entreprise.gestion.security.UserDetailsServiceImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -39,18 +40,30 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-
                         .requestMatchers("/api/auth/login").permitAll()
                         .requestMatchers("/h2-console/**").permitAll()
+                        .requestMatchers("/error").permitAll()
 
+                        // comptes : liste et fiche pour ADMIN et CHEF (le service limite le chef à son périmètre), le reste ADMIN
+                        .requestMatchers(HttpMethod.GET, "/api/utilisateurs", "/api/utilisateurs/*").hasAnyRole("ADMIN", "CHEF")
                         .requestMatchers("/api/utilisateurs/**").hasRole("ADMIN")
                         .requestMatchers("/api/audit/**").hasRole("ADMIN")
-                        .requestMatchers("/api/anticipation/**", "/api/alertes/**").hasRole("ADMIN")
-                        .requestMatchers("/error").permitAll()
                         .requestMatchers("/api/imports/**").hasRole("ADMIN")
-                        .requestMatchers("/api/exports/**").hasRole("ADMIN")
-                        .requestMatchers("/api/dossiers/**").hasRole("ADMIN")
-                        .requestMatchers("/api/dashboard/**").hasRole("ADMIN")
+
+                        // fenêtres : lecture pour l'anticipation (elle pré-remplit les écrans), écriture ADMIN
+                        .requestMatchers(HttpMethod.GET, "/api/anticipation/configuration").hasAnyRole("ADMIN", "RH", "CHEF")
+                        .requestMatchers("/api/anticipation/configuration/**").hasRole("ADMIN")
+
+                        // actions sur un dossier : le personnel, et l'agent sur son propre dossier (le service tranche)
+                        .requestMatchers(HttpMethod.POST, "/api/dossiers/*/demarrage", "/api/dossiers/*/sans-suite", "/api/dossiers/*/reouverture")
+                                .hasAnyRole("ADMIN", "RH", "CHEF", "AGENT")
+
+                        // anticipation, alertes, dossiers, tableau de bord, exports : ADMIN, RH, CHEF (le périmètre est imposé par les services)
+                        .requestMatchers("/api/anticipation/**", "/api/alertes/**", "/api/dossiers/**",
+                                "/api/dashboard/**", "/api/exports/**").hasAnyRole("ADMIN", "RH", "CHEF")
+
+                        // espace personnel de l'agent
+                        .requestMatchers("/api/mon-espace/**").hasRole("AGENT")
                         .anyRequest().authenticated()
                 )
                 .headers(h -> h.frameOptions(f -> f.disable()))

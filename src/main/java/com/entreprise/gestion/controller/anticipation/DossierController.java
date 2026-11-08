@@ -15,7 +15,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 
-@RestController @RequestMapping("/api/dossiers") @RequiredArgsConstructor @PreAuthorize("hasRole('ADMIN')")
+@RestController @RequestMapping("/api/dossiers") @RequiredArgsConstructor @PreAuthorize("hasAnyRole('ADMIN','RH','CHEF')")
 public class DossierController {
     private final DossierService dossierService;
     @GetMapping("/par-echeance")
@@ -39,13 +39,18 @@ public class DossierController {
         return ResponseEntity.ok(dossierService.synthese(multiples, type, matricule == null || matricule.isBlank() ? null : matricule.trim(), filtre));
     }
     @PostMapping("/{id}/demarrage")
+    @PreAuthorize("hasAnyRole('ADMIN','RH','CHEF','AGENT')")
     public ResponseEntity<DossierDTO> demarrer(@PathVariable Long id, @AuthenticationPrincipal UserDetailsImpl principal) {
         return ResponseEntity.ok(dossierService.demarrer(id, principal));
     }
-    @PostMapping("/{id}/sans-suite") public ResponseEntity<DossierDTO> sansSuite(@PathVariable Long id,@Valid @RequestBody SansSuiteRequest req,@AuthenticationPrincipal UserDetailsImpl principal){
+    @PostMapping("/{id}/sans-suite")
+    @PreAuthorize("hasAnyRole('ADMIN','RH','CHEF','AGENT')")
+    public ResponseEntity<DossierDTO> sansSuite(@PathVariable Long id,@Valid @RequestBody SansSuiteRequest req,@AuthenticationPrincipal UserDetailsImpl principal){
         return ResponseEntity.ok(dossierService.classerSansSuite(id,req.motif(),principal));
     }
-    @PostMapping("/{id}/reouverture") public ResponseEntity<DossierDTO> reouverture(@PathVariable Long id,@AuthenticationPrincipal UserDetailsImpl principal){
+    @PostMapping("/{id}/reouverture")
+    @PreAuthorize("hasAnyRole('ADMIN','RH','CHEF','AGENT')")
+    public ResponseEntity<DossierDTO> reouverture(@PathVariable Long id,@AuthenticationPrincipal UserDetailsImpl principal){
         return ResponseEntity.ok(dossierService.reouvrir(id,principal));
     }
 }

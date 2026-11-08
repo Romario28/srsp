@@ -6,4 +6,5 @@ import java.util.List;
 
 public record UpdateUtilisateurRequest(@Size(max = 100) String nom, @Size(max = 100) String prenom,
                                        @Size(max = 20) String matriculeAgent,
-                                       @NotEmpty List<String> roles, PerimetreDTO perimetre) {}
+                                       @NotEmpty List<String> roles, PerimetreDTO perimetre,
+                                       boolean agirSurSonDossier) {}

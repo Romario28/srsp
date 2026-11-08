@@ -22,7 +22,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/anticipation")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("hasAnyRole('ADMIN','RH','CHEF')")
 public class AnticipationController {
 
     private final AnticipationService anticipationService;

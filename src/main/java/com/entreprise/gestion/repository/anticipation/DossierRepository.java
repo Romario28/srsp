@@ -4,6 +4,7 @@ import com.entreprise.gestion.entite.anticipation.Dossier;
 import com.entreprise.gestion.entite.anticipation.StatutAgent;
 import com.entreprise.gestion.entite.anticipation.StatutDossier;
 import com.entreprise.gestion.entite.anticipation.TypeAnticipation;
+import com.entreprise.gestion.service.acces.Perimetre;
 import com.entreprise.gestion.service.anticipation.FiltreAgents;
 import com.entreprise.gestion.service.dossier.CleDossier;
 import com.entreprise.gestion.service.dossier.DossierResume;
@@ -27,7 +28,7 @@ public interface DossierRepository extends JpaRepository<Dossier,Long> {
             +"AND (:statutAgent IS NULL OR g.statut=:statutAgent) AND (:corps IS NULL OR c.code=:corps) AND (:grade IS NULL OR gr.code=:grade) "
             +"AND (:categorie IS NULL OR c.categorie=:categorie) AND (:fiv IS NULL OR l.code=:fiv) AND (:soa IS NULL OR s.code=:soa) "
             +"AND (:region IS NULL OR g.regCode=:region) AND (:ministere IS NULL OR m.code=:ministere) "
-            // agents ayant au moins deux dossiers (tous états confondus)
+            +"AND (:pMinistere = false OR m.code IN :pMinisteres) AND (:pSoa = false OR s.code IN :pSoas) AND (:pFiv = false OR l.code IN :pFivs) "
             +"AND (:multiples = false OR (SELECT COUNT(x) FROM Dossier x WHERE x.agent.matricule = g.matricule) > 1)";
     String FILTRES="d.statut IN :statuts AND (:preparationMax IS NULL OR d.datePreparation<=:preparationMax) "
             +"AND (:echeanceMin IS NULL OR d.dateEcheance>=:echeanceMin) AND (:echeanceMax IS NULL OR d.dateEcheance<=:echeanceMax) AND "+FILTRES_COMMUNS;
@@ -39,12 +40,19 @@ public interface DossierRepository extends JpaRepository<Dossier,Long> {
             @Param("type") TypeAnticipation type,@Param("matricule") String matricule,@Param("statutAgent") StatutAgent statutAgent,
             @Param("corps") String corps,@Param("grade") String grade,@Param("categorie") String categorie,
             @Param("fiv") String fiv,@Param("soa") String soa,@Param("region") String region,@Param("ministere") String ministere,
-            @Param("multiples") boolean multiples,Pageable page);
+            @Param("multiples") boolean multiples,
+            @Param("pMinistere") boolean pMinistere,@Param("pMinisteres") Collection<String> pMinisteres,
+            @Param("pSoa") boolean pSoa,@Param("pSoas") Collection<String> pSoas,
+            @Param("pFiv") boolean pFiv,@Param("pFivs") Collection<String> pFivs,
+            Pageable page);
 
     default Page<Dossier> rechercher(Collection<StatutDossier> statuts,TypeAnticipation type,String matricule,VueDossier.Bornes b,
-            FiltreAgents f,boolean multiples,Pageable page) {
+            FiltreAgents f,boolean multiples,Perimetre p,Pageable page) {
+        if (p.estVide()) return Page.empty(page);
         return rechercherFiltre(statuts,b.preparationMax(),b.echeanceMin(),b.echeanceMax(),type,matricule,
-                f.statutAgent(),f.corps(),f.grade(),f.categorie(),f.fiv(),f.soa(),f.region(),f.ministere(),multiples,page);
+                f.statutAgent(),f.corps(),f.grade(),f.categorie(),f.fiv(),f.soa(),f.region(),f.ministere(),multiples,
+                p.restreintMinisteres(),p.ministeresPourRequete(),p.restreintSoas(),p.soasPourRequete(),
+                p.restreintFivs(),p.fivsPourRequete(),page);
     }
 
     @Query("SELECT d FROM Dossier d "+JOINTURES_FETCH+" WHERE "+FILTRES)
@@ -53,15 +61,24 @@ public interface DossierRepository extends JpaRepository<Dossier,Long> {
             @Param("type") TypeAnticipation type,@Param("matricule") String matricule,@Param("statutAgent") StatutAgent statutAgent,
             @Param("corps") String corps,@Param("grade") String grade,@Param("categorie") String categorie,
             @Param("fiv") String fiv,@Param("soa") String soa,@Param("region") String region,@Param("ministere") String ministere,
-            @Param("multiples") boolean multiples, Sort sort);
+            @Param("multiples") boolean multiples,
+            @Param("pMinistere") boolean pMinistere,@Param("pMinisteres") Collection<String> pMinisteres,
+            @Param("pSoa") boolean pSoa,@Param("pSoas") Collection<String> pSoas,
+            @Param("pFiv") boolean pFiv,@Param("pFivs") Collection<String> pFivs,
+            Sort sort);
 
     default List<Dossier> rechercherTous(Collection<StatutDossier> statuts,TypeAnticipation type,String matricule,VueDossier.Bornes b,
-            FiltreAgents f,boolean multiples,Sort sort) {
+            FiltreAgents f,boolean multiples,Perimetre p,Sort sort) {
+        if (p.estVide()) return List.of();
         return rechercherTousFiltre(statuts,b.preparationMax(),b.echeanceMin(),b.echeanceMax(),type,matricule,
-                f.statutAgent(),f.corps(),f.grade(),f.categorie(),f.fiv(),f.soa(),f.region(),f.ministere(),multiples,sort);
+                f.statutAgent(),f.corps(),f.grade(),f.categorie(),f.fiv(),f.soa(),f.region(),f.ministere(),multiples,
+                p.restreintMinisteres(),p.ministeresPourRequete(),p.restreintSoas(),p.soasPourRequete(),
+                p.restreintFivs(),p.fivsPourRequete(),sort);
     }
 
     Optional<Dossier> findByAgentMatriculeAndTypeAndDateEcheance(String matricule,TypeAnticipation type,LocalDate dateEcheance);
+
+    List<Dossier> findByAgentMatriculeOrderByDateEcheanceDesc(String matricule);
 
     @Query("SELECT COUNT(d) FROM Dossier d "+JOINTURES+" WHERE "+FILTRES)
     long compterFiltre(@Param("statuts") Collection<StatutDossier> statuts,@Param("preparationMax") LocalDate preparationMax,
@@ -69,14 +86,20 @@ public interface DossierRepository extends JpaRepository<Dossier,Long> {
             @Param("type") TypeAnticipation type,@Param("matricule") String matricule,@Param("statutAgent") StatutAgent statutAgent,
             @Param("corps") String corps,@Param("grade") String grade,@Param("categorie") String categorie,
             @Param("fiv") String fiv,@Param("soa") String soa,@Param("region") String region,@Param("ministere") String ministere,
-            @Param("multiples") boolean multiples);
+            @Param("multiples") boolean multiples,
+            @Param("pMinistere") boolean pMinistere,@Param("pMinisteres") Collection<String> pMinisteres,
+            @Param("pSoa") boolean pSoa,@Param("pSoas") Collection<String> pSoas,
+            @Param("pFiv") boolean pFiv,@Param("pFivs") Collection<String> pFivs);
+
     default long compter(Collection<StatutDossier> statuts,TypeAnticipation type,String matricule,VueDossier.Bornes b,
-            FiltreAgents f,boolean multiples) {
+            FiltreAgents f,boolean multiples,Perimetre p) {
+        if (p.estVide()) return 0;
         return compterFiltre(statuts,b.preparationMax(),b.echeanceMin(),b.echeanceMax(),type,matricule,
-                f.statutAgent(),f.corps(),f.grade(),f.categorie(),f.fiv(),f.soa(),f.region(),f.ministere(),multiples);
+                f.statutAgent(),f.corps(),f.grade(),f.categorie(),f.fiv(),f.soa(),f.region(),f.ministere(),multiples,
+                p.restreintMinisteres(),p.ministeresPourRequete(),p.restreintSoas(),p.soasPourRequete(),
+                p.restreintFivs(),p.fivsPourRequete());
     }
 
-    // total des dossiers d'un agent (une ligne) et pour une page entière (une requête)
     long countByAgentMatricule(String matricule);
 
     @Query("SELECT new com.entreprise.gestion.service.dossier.NbDossiersAgent(d.agent.matricule, COUNT(d)) "

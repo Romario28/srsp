@@ -9,13 +9,15 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashSet;
 import java.util.Set;
 
 /**
- * Jeu de démonstration (base vide uniquement) :
+ * Rôles : créés s'ils manquent (toute base). Jeu de démonstration : base sans compte uniquement.
  *   admin@entreprise.mg            ADMIN : accès total
- *   jean.rakoto@entreprise.mg      gestionnaire lié au matricule 123456, périmètre : ministère 05
- *   hanta.rabe@entreprise.mg       gestionnaire sans lien agent, périmètre : ministère 05 + localité L01
+ *   sophie.martin@entreprise.mg    CHEF : ministère 05 ; voit aussi la liste des comptes de son périmètre
+ *   hanta.rabe@entreprise.mg       RH : ministère 05 + localité L01
+ *   jean.rakoto@entreprise.mg      AGENT lié au matricule 123456, lecture seule
  * Les codes de périmètre sont des textes libres : ils prendront effet une fois les référentiels importés.
  */
 @Component
@@ -33,27 +35,33 @@ public class DataInitializer implements CommandLineRunner {
     @Override
     @Transactional
     public void run(String... args) {
-        if (utilisateurRepository.count() > 0) return;   // [NOUVEAU] base déjà initialisée (profil persistant)
+        Permission pRead    = permission("ANTICIPATION_READ", "Consulter l'anticipation");
+        Permission pDossier = permission("DOSSIER_MANAGE", "Démarrer / classer / rouvrir un dossier");
+        Permission pUser    = permission("USER_MANAGE", "Gérer les comptes");
+        Permission pUserRead = permission("USER_READ", "Lister les comptes de son périmètre");
+        Permission pAudit   = permission("AUDIT_READ", "Consulter l'audit");
 
-        Permission pRead   = permissionRepository.save(perm("ANTICIPATION_READ", "Consulter l'anticipation"));
-        Permission pDossier = permissionRepository.save(perm("DOSSIER_MANAGE", "Démarrer / classer / rouvrir un dossier"));
-        Permission pUser   = permissionRepository.save(perm("USER_MANAGE", "Gérer les comptes"));
-        Permission pAudit  = permissionRepository.save(perm("AUDIT_READ", "Consulter l'audit"));
+        Role roleAdmin = role("ROLE_ADMIN", "Accès complet", pRead, pDossier, pUser, pAudit);
+        Role roleChef  = role("ROLE_CHEF", "Chef / Supérieur : anticipation et comptes de son périmètre", pRead, pDossier, pUserRead);
+        Role roleRh    = role("ROLE_RH", "Utilisateur RH : anticipation dans son périmètre", pRead, pDossier);
+        Role roleAgent = role("ROLE_AGENT", "Agent : son propre espace", pRead);
 
-        Role roleGestionnaire = roleRepository.save(role("ROLE_GESTIONNAIRE", "Authentifié : périmètre défini par ses ministères, SOA et localités", pRead, pDossier));
-        Role roleAdmin        = roleRepository.save(role("ROLE_ADMIN", "Accès complet", pRead, pDossier, pUser, pAudit));
+        if (utilisateurRepository.count() > 0) return;
 
         Utilisateur admin = compte("admin@entreprise.mg", "Admin123!", null, null, null);
         assignRole(admin, roleAdmin);
 
-        Utilisateur jean = compte("jean.rakoto@entreprise.mg", "Gest123!", "Jean", "Rakoto", "123456");
-        assignRole(jean, roleGestionnaire);
-        perimetre(jean, DimensionPerimetre.MINISTERE, "05");
+        Utilisateur sophie = compte("sophie.martin@entreprise.mg", "Chef123!", "Sophie", "Martin", null);
+        assignRole(sophie, roleChef);
+        perimetre(sophie, DimensionPerimetre.MINISTERE, "05");
 
-        Utilisateur hanta = compte("hanta.rabe@entreprise.mg", "Gest123!", "Hanta", "Rabe", null);
-        assignRole(hanta, roleGestionnaire);
+        Utilisateur hanta = compte("hanta.rabe@entreprise.mg", "Rh123!", "Hanta", "Rabe", null);
+        assignRole(hanta, roleRh);
         perimetre(hanta, DimensionPerimetre.MINISTERE, "05");
         perimetre(hanta, DimensionPerimetre.FIV, "L01");
+
+        Utilisateur jean = compte("jean.rakoto@entreprise.mg", "Agent123!", "Jean", "Rakoto", "123456");
+        assignRole(jean, roleAgent);
 
         String motDePasseSecours = System.getenv().getOrDefault("SUPERADMIN_PASSWORD", "SuperSecret_ChangeMe_2024!");
         Utilisateur superAdmin = utilisateurRepository.save(Utilisateur.builder()
@@ -63,22 +71,26 @@ public class DataInitializer implements CommandLineRunner {
 
         System.out.println("""
 
-            ╔═══════════════════════════════════════════════════════════════╗
-            ║ admin@entreprise.mg           Admin123!  ADMIN                 ║
-            ║ jean.rakoto@entreprise.mg     Gest123!   gestionnaire (123456) ║
-            ║ hanta.rabe@entreprise.mg      Gest123!   gestionnaire          ║
-            ╚═══════════════════════════════════════════════════════════════╝
+            ╔════════════════════════════════════════════════════════════════╗
+            ║ admin@entreprise.mg           Admin123!   ADMIN                 ║
+            ║ sophie.martin@entreprise.mg   Chef123!    CHEF (ministère 05)   ║
+            ║ hanta.rabe@entreprise.mg      Rh123!      RH (05 + L01)         ║
+            ║ jean.rakoto@entreprise.mg     Agent123!   AGENT (123456)        ║
+            ╚════════════════════════════════════════════════════════════════╝
             """);
     }
 
-    private Permission perm(String nom, String desc) {
-        return Permission.builder().nomPermission(nom).description(desc).build();
+    private Permission permission(String nom, String desc) {
+        return permissionRepository.findByNomPermission(nom)
+                .orElseGet(() -> permissionRepository.save(Permission.builder().nomPermission(nom).description(desc).build()));
     }
 
     private Role role(String nom, String desc, Permission... permissions) {
-        Role r = Role.builder().nomRole(nom).description(desc).build();
-        r.setPermissions(Set.of(permissions));
-        return r;
+        return roleRepository.findByNomRole(nom).orElseGet(() -> {
+            Role r = Role.builder().nomRole(nom).description(desc).build();
+            r.setPermissions(new HashSet<>(Set.of(permissions)));
+            return roleRepository.save(r);
+        });
     }
 
     private Utilisateur compte(String email, String motDePasse, String prenom, String nom, String matricule) {

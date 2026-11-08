@@ -27,7 +27,7 @@ public class ConfigurationDelaiController {
     private final ConfigurationDelaiService configurationDelaiService;
 
     @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','RH','CHEF')")
     public ResponseEntity<List<ConfigurationDelaiDTO>> lister() {
         Map<TypeAnticipation, FenetreAnticipation> effectives = configurationDelaiService.resoudreToutes(); // MODIFIÉ
 

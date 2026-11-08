@@ -5,6 +5,8 @@ import com.entreprise.gestion.entite.anticipation.TypeAnticipation;
 import com.entreprise.gestion.dto.anticipation.AgentFicheDTO;
 import com.entreprise.gestion.exception.BusinessException; // AJOUTÉ
 import com.entreprise.gestion.repository.referentiel.AgentRepository;
+import com.entreprise.gestion.service.acces.Perimetre;
+import com.entreprise.gestion.service.acces.PerimetreCourant;
 import com.entreprise.gestion.service.dossier.CleDossier;
 import com.entreprise.gestion.service.dossier.DossierResume;
 import com.entreprise.gestion.service.dossier.EtatDossier;
@@ -28,6 +30,7 @@ public class AnticipationService {
     private final ConfigurationDelaiService configurationDelaiService;
     private final GradeSuivantService gradeSuivantService;
     private final SuiviDossiers suiviDossiers;
+    private final PerimetreCourant perimetreCourant;
 
     /** Nombre total d'agents importés, quel que soit leur statut administratif. */
     @Transactional(readOnly = true)
@@ -39,6 +42,13 @@ public class AnticipationService {
     public AgentFicheDTO fiche(String matricule) {
         Agent agent = agentRepository.findById(matricule)
                 .orElseThrow(() -> new BusinessException("AGENT_INTROUVABLE", "Agent introuvable : " + matricule));
+        perimetreCourant.exiger(agent);
+        return ficheDe(agent);
+    }
+
+    /** SANS contrôle de périmètre : réservé à l'espace personnel de l'agent (MonEspaceService). */
+    @Transactional(readOnly = true)
+    public AgentFicheDTO ficheDe(Agent agent) {
         return AgentFicheDTO.from(agent, integrationDe(agent), gradeSuivantDe(agent));
     }
 
@@ -106,7 +116,9 @@ public class AnticipationService {
 
     @Transactional(readOnly = true)
     public List<AgentEcheance> anomaliesAvecAgent(FiltreAgents filtre) {
+        Perimetre perimetre = perimetreCourant.get();
         return agentRepository.findAllActifs().stream()
+                .filter(perimetre::autorise)
                 .filter(filtre::accepte)
                 .flatMap(a -> moteur.calculerEcheances(a).stream()
                         .filter(e -> e.type() == TypeAnticipation.ANOMALIE)
@@ -144,7 +156,8 @@ public class AnticipationService {
                 ? configurationDelaiService.resoudreFenetre(type) : fenetre;
         GradesParCorps grades = type.changeDeGrade() ? gradeSuivantService.indexer() : null;
         Map<CleDossier,DossierResume> dossiers=suiviDossiers.tous();
-        return agentRepository.findAllActifs().stream().filter(filtre::accepte)
+        Perimetre perimetre = perimetreCourant.get();
+        return agentRepository.findAllActifs().stream().filter(perimetre::autorise).filter(filtre::accepte)
                 .flatMap(a -> moteur.calculerEcheances(a).stream().filter(e -> e.type() == type)
                         .map(e -> {
                             DossierResume dossier=dossiers.get(new CleDossier(a.getMatricule(),e.type(),e.dateEcheance()));

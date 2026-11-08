@@ -80,6 +80,12 @@ public class Utilisateur {
     @Builder.Default
     private boolean compteSysteme = false;
 
+    // Profil Agent : vrai si un administrateur lui a accordé le droit d'agir (démarrer, classer, rouvrir)
+    // sur son PROPRE dossier. Sans effet pour les autres profils.
+    @Column(name = "agir_sur_son_dossier", nullable = false, columnDefinition = "boolean default false")
+    @Builder.Default
+    private boolean agirSurSonDossier = false;
+
     @Column(name = "date_creation", nullable = false, updatable = false)
     private LocalDateTime dateCreation;
 

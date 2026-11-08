@@ -7,6 +7,8 @@ import com.entreprise.gestion.entite.anticipation.CategorieCalendrier;
 import com.entreprise.gestion.entite.anticipation.TypeAnticipation;
 import com.entreprise.gestion.exception.BusinessException;
 import com.entreprise.gestion.repository.referentiel.AgentRepository;
+import com.entreprise.gestion.service.acces.Perimetre;
+import com.entreprise.gestion.service.acces.PerimetreCourant;
 import com.entreprise.gestion.service.dossier.CleDossier;
 import com.entreprise.gestion.service.dossier.DossierResume;
 import com.entreprise.gestion.service.dossier.SuiviDossiers;
@@ -38,6 +40,7 @@ public class CalendrierService {
     private final ConfigurationDelaiService configurationDelaiService;
     private final GradeSuivantService gradeSuivantService;
     private final SuiviDossiers suiviDossiers;
+    private final PerimetreCourant perimetreCourant;
 
     private record Placee(Agent agent, Echeance echeance, CategorieCalendrier categorie, FenetreAnticipation fenetre) {
         LocalDate datePreparation() { return fenetre.datePreparation(echeance.dateEcheance()); }
@@ -148,7 +151,9 @@ public class CalendrierService {
     /** Échéances datées des agents en activité qui passent le filtre (les anomalies n'ont pas de date). */
     private Stream<Placee> placees(FiltreAgents filtre) {
         Map<TypeAnticipation, FenetreAnticipation> fenetres = configurationDelaiService.resoudreToutes();
+        Perimetre perimetre = perimetreCourant.get();
         return agentRepository.findAllActifs().stream()
+                .filter(perimetre::autorise)
                 .filter(filtre::accepte)
                 .flatMap(a -> moteur.calculerEcheances(a).stream()
                         .filter(e -> e.type() != TypeAnticipation.ANOMALIE && e.dateEcheance() != null)

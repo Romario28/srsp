@@ -37,6 +37,7 @@ class DossierServiceTest {
     @Mock DossierProperties proprietes;
     @Mock AuditService auditService;
     @Mock ControleAcces controleAcces;
+    @Mock com.entreprise.gestion.service.acces.PerimetreCourant perimetreCourant;
     @InjectMocks DossierService service;
 
     private final UserDetailsImpl acteur = new UserDetailsImpl(Utilisateur.builder().id(1L).email("admin@entreprise.mg").build());

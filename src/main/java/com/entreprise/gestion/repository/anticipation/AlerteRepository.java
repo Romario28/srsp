@@ -1,12 +1,14 @@
 package com.entreprise.gestion.repository.anticipation;
 
 import com.entreprise.gestion.entite.anticipation.*;
+import com.entreprise.gestion.service.acces.Perimetre;
 import com.entreprise.gestion.service.anticipation.FiltreAgents;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import java.util.Collection;
 import java.util.List;
 
 public interface AlerteRepository extends JpaRepository<Alerte, Long> {
@@ -36,7 +38,10 @@ public interface AlerteRepository extends JpaRepository<Alerte, Long> {
                   AND (:fiv IS NULL OR l.code = :fiv)
                   AND (:soa IS NULL OR s.code = :soa)
                   AND (:region IS NULL OR g.regCode = :region)
-                  AND (:ministere IS NULL OR m.code = :ministere)))
+                  AND (:ministere IS NULL OR m.code = :ministere)
+                  AND (:pMinistere = false OR m.code IN :pMinisteres)
+                  AND (:pSoa = false OR s.code IN :pSoas)
+                  AND (:pFiv = false OR l.code IN :pFivs)))
             """;
 
     @Query(value = "SELECT a FROM Alerte a WHERE " + CONDITIONS + " ORDER BY a.dateEcheance ASC NULLS LAST",
@@ -53,12 +58,19 @@ public interface AlerteRepository extends JpaRepository<Alerte, Long> {
                                   @Param("soa") String soa,
                                   @Param("region") String region,
                                   @Param("ministere") String ministere,
+                                  @Param("pMinistere") boolean pMinistere, @Param("pMinisteres") Collection<String> pMinisteres,
+                                  @Param("pSoa") boolean pSoa, @Param("pSoas") Collection<String> pSoas,
+                                  @Param("pFiv") boolean pFiv, @Param("pFivs") Collection<String> pFivs,
                                   Pageable page);
 
     default Page<Alerte> rechercher(TypeAnticipation type, StatutAlerte statut, String matricule,
-                                    FiltreAgents f, Pageable page) {
-        return rechercherFiltre(type, statut, matricule, !f.estVide(), f.statutAgent(), f.corps(), f.grade(),
-                f.categorie(), f.fiv(), f.soa(), f.region(), f.ministere(), page);
+                                    FiltreAgents f, Perimetre p, Pageable page) {
+        if (p.estVide()) return Page.empty(page);
+        return rechercherFiltre(type, statut, matricule, !f.estVide() || p.restreint(), f.statutAgent(), f.corps(), f.grade(),
+                f.categorie(), f.fiv(), f.soa(), f.region(), f.ministere(),
+                p.restreintMinisteres(), p.ministeresPourRequete(),
+                p.restreintSoas(), p.soasPourRequete(),
+                p.restreintFivs(), p.fivsPourRequete(), page);
     }
 
     // Toutes les alertes d'un agent pour un type, tous statuts confondus : sert à dédupliquer les anomalies par raison.
