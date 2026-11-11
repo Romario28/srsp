@@ -101,8 +101,9 @@ public class DemandeCompteService {
 
         Role role = roleRepository.findByNomRole(profil)
                 .orElseThrow(() -> new BusinessException("ROLE_INCONNU", "Rôle inconnu : " + profil));
-        UtilisateurRole ur = UtilisateurRole.builder().utilisateur(saved).role(role).build();
-        utilisateurRoleRepository.save(ur);
+        // [MODIFIÉ] on garde l'instance RETOURNÉE par save() (celle que gère la session), pas l'objet d'origine
+        UtilisateurRole ur = utilisateurRoleRepository.save(
+                UtilisateurRole.builder().utilisateur(saved).role(role).build());
         saved.getUtilisateurRoles().add(ur);
 
         auditService.logAnonyme("Système", "DEMANDE_COMPTE",

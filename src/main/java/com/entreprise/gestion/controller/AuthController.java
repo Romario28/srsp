@@ -11,6 +11,7 @@ import com.entreprise.gestion.service.acces.ControleAcces;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -21,8 +22,10 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
@@ -47,8 +50,13 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(Map.of("error", "Compte désactivé ou suspendu"));
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Erreur serveur : " + e.getMessage()));
+            // [MODIFIÉ] ne plus renvoyer e.getMessage() : détail au journal, référence au client
+            String reference = UUID.randomUUID().toString().substring(0, 8);
+            log.error("Erreur serveur à la connexion [réf. {}]", reference, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
+                    "error", "Une erreur interne est survenue. Si elle persiste, contactez un administrateur en indiquant la référence "
+                            + reference + ".",
+                    "code", "ERREUR_INTERNE"));
         }
     }
 

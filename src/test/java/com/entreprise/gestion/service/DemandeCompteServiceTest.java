@@ -22,6 +22,7 @@ import com.entreprise.gestion.service.acces.Perimetre;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -80,6 +81,24 @@ class DemandeCompteServiceTest {
         when(utilisateurRepository.existsByEmailIgnoreCase("deja@x.mg")).thenReturn(true);
         assertThatThrownBy(() -> service.soumettre(demande("123456", "deja@x.mg", "ROLE_AGENT"), "127.0.0.1"))
                 .isInstanceOfSatisfying(BusinessException.class, e -> assertThat(e.getCode()).isEqualTo("DEMANDE_IMPOSSIBLE"));
+    }
+
+    // [NOUVEAU] régression : la soumission réussie doit ajouter à la collection l'instance rendue par save(), pas l'original
+    @Test
+    void soumissionAjouteLInstanceRendueParLeDepot() {
+        Role role = Role.builder().nomRole("ROLE_AGENT").build();
+        UtilisateurRole geree = UtilisateurRole.builder().role(role).build();   // copie « gérée », distincte de l'original
+        when(passwordEncoder.encode(any())).thenReturn("hash");
+        when(utilisateurRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+        when(roleRepository.findByNomRole("ROLE_AGENT")).thenReturn(Optional.of(role));
+        when(utilisateurRoleRepository.save(any())).thenReturn(geree);
+
+        service.soumettre(demande("123456", "nouveau@x.mg", "ROLE_AGENT"), "127.0.0.1");
+
+        ArgumentCaptor<Utilisateur> capture = ArgumentCaptor.forClass(Utilisateur.class);
+        verify(utilisateurRepository).save(capture.capture());
+        assertThat(capture.getValue().getStatut()).isEqualTo(StatutUtilisateur.EN_ATTENTE);
+        assertThat(capture.getValue().getUtilisateurRoles()).containsExactly(geree);
     }
 
     @Test

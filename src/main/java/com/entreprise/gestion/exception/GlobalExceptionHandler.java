@@ -1,5 +1,6 @@
 package com.entreprise.gestion.exception;
 
+import lombok.extern.slf4j.Slf4j;
 import org.hibernate.LazyInitializationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -14,8 +15,10 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -89,9 +92,14 @@ public class GlobalExceptionHandler {
     }
 
     // ─── Fallback générique ──────────────────────────────────────────────────
+    // [MODIFIÉ] le détail (message, pile) va au journal du serveur ; le client ne reçoit qu'un message neutre et une référence
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<Map<String, String>> handleGeneric(RuntimeException ex) {
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(Map.of("error", ex.getMessage()));
+        String reference = UUID.randomUUID().toString().substring(0, 8);
+        log.error("Erreur interne non prévue [réf. {}]", reference, ex);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
+                "code", "ERREUR_INTERNE",
+                "error", "Une erreur interne est survenue. Si elle persiste, contactez un administrateur en indiquant la référence "
+                        + reference + "."));
     }
 }
