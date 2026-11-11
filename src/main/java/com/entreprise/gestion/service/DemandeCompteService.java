@@ -82,9 +82,11 @@ public class DemandeCompteService {
             throw new BusinessException("EMAIL_REQUIS", "L'e-mail est obligatoire.");
         }
 
-        // Unicité : message générique pour ne pas révéler si c'est l'e-mail ou le matricule qui est déjà utilisé
+        // Unicité : on n'indique pas si c'est l'e-mail ou le matricule, mais on dit quoi faire
         if (utilisateurRepository.existsByEmailIgnoreCase(email) || utilisateurRepository.findByMatriculeAgent(matricule).isPresent()) {
-            throw new BusinessException("DEMANDE_IMPOSSIBLE", "Impossible d'enregistrer la demande avec ces informations.");
+            throw new BusinessException("DEMANDE_IMPOSSIBLE",
+                    "Cette adresse e-mail ou ce matricule est déjà utilisé : un compte ou une demande existe peut-être déjà. "
+                            + "Essayez de vous connecter. Si vous ne reconnaissez pas cette situation, contactez un administrateur.");
         }
 
         Utilisateur u = Utilisateur.builder()
