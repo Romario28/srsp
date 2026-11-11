@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -18,13 +19,20 @@ public interface UtilisateurRepository extends JpaRepository<Utilisateur, Long> 
 
     boolean existsByEmail(String email);
 
-    Optional<Utilisateur> findByMatriculeAgent(String matriculeAgent);   // [NOUVEAU]
+    // [NOUVEAU] ↓
+    boolean existsByEmailIgnoreCase(String email);
+    long countByStatut(StatutUtilisateur statut);
+    List<Utilisateur> findByStatutOrderByDateCreationAsc(StatutUtilisateur statut);
+    // [NOUVEAU] ↑
 
-    /** Liste API : exclut structurellement les comptes système. */
-    Page<Utilisateur> findByCompteSystemeFalse(Pageable pageable);
+    Optional<Utilisateur> findByMatriculeAgent(String matriculeAgent);
 
-    /** Lecture unitaire API : un compte système est "introuvable" côté API. */
-    @Query("SELECT u FROM Utilisateur u WHERE u.id = :id AND u.compteSysteme = false")
+    /** Liste API : exclut les comptes système et les demandes en attente (elles ont leur écran). */
+    Page<Utilisateur> findByCompteSystemeFalseAndStatutNot(StatutUtilisateur statut, Pageable pageable);
+
+    /** Lecture unitaire API : un compte système ou une demande en attente n'est ni consultable ni modifiable par l'écran des comptes. */
+    @Query("SELECT u FROM Utilisateur u WHERE u.id = :id AND u.compteSysteme = false "
+         + "AND u.statut <> com.entreprise.gestion.entite.StatutUtilisateur.EN_ATTENTE")
     Optional<Utilisateur> findByIdVisibleParApi(@Param("id") Long id);
 
     /** Compte les ADMIN actifs hors comptes système — garantit qu'on ne suspend jamais le dernier. */

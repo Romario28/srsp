@@ -3,5 +3,6 @@ package com.entreprise.gestion.entite;
 public enum StatutUtilisateur {
     ACTIF,
     SUSPENDU,
-    DESACTIVE
+    DESACTIVE,
+    EN_ATTENTE   // [NOUVEAU] demande de compte non validée : ne peut pas se connecter
 }

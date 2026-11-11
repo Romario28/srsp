@@ -41,12 +41,14 @@ public class SecurityConfig {
                 .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/login").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/auth/demande-compte").permitAll()   // [NOUVEAU]
                         .requestMatchers("/h2-console/**").permitAll()
                         .requestMatchers("/error").permitAll()
 
                         // comptes : liste et fiche pour ADMIN et CHEF (le service limite le chef à son périmètre), le reste ADMIN
                         .requestMatchers(HttpMethod.GET, "/api/utilisateurs", "/api/utilisateurs/*").hasAnyRole("ADMIN", "CHEF")
                         .requestMatchers("/api/utilisateurs/**").hasRole("ADMIN")
+                        .requestMatchers("/api/demandes-comptes/**").hasAnyRole("ADMIN", "CHEF")   // [NOUVEAU] le service limite le chef
                         .requestMatchers("/api/audit/**").hasRole("ADMIN")
                         .requestMatchers("/api/imports/**").hasRole("ADMIN")
 

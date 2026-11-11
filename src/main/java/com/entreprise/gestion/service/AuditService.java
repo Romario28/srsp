@@ -48,6 +48,14 @@ public class AuditService {
         logAuditRepository.save(log);
     }
 
+    // [NOUVEAU] ↓ action sans compte connecté (demande de compte publique) : l'acteur est décrit en texte
+    @Transactional
+    public void logAnonyme(String acteurLibelle, String action, String details, String ip) {
+        logAuditRepository.save(LogAudit.builder()
+                .acteurLibelle(acteurLibelle).action(action).details(details).adresseIp(ip).build());
+    }
+    // [NOUVEAU] ↑
+
     @Transactional(readOnly = true)
     public List<AuditDTO> findAll() {
         return logAuditRepository.findAllByOrderByDateActionDesc()

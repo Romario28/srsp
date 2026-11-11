@@ -3,17 +3,24 @@ package com.entreprise.gestion.service;
 import com.entreprise.gestion.dto.LoginRequest;
 import com.entreprise.gestion.dto.LoginResponse;
 import com.entreprise.gestion.entite.Session;
+import com.entreprise.gestion.entite.StatutUtilisateur;
 import com.entreprise.gestion.entite.Utilisateur;
+import com.entreprise.gestion.exception.BusinessException;
 import com.entreprise.gestion.repository.SessionRepository;
 import com.entreprise.gestion.repository.UtilisateurRepository;
 import com.entreprise.gestion.security.JwtService;
 import com.entreprise.gestion.security.UserDetailsImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.authentication.LockedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,20 +38,22 @@ public class AuthService {
     private final SessionRepository      sessionRepository;
     private final JwtService             jwtService;
     private final AuditService           auditService;
+    private final PasswordEncoder        passwordEncoder;   // [NOUVEAU]
 
     @Transactional
     public LoginResponse login(LoginRequest req, String ip) {
 
         // 1. Valide email + mot de passe
-        Authentication authentication = authManager.authenticate(
-                new UsernamePasswordAuthenticationToken(req.getEmail(), req.getPassword()));
-        //authManager.authenticate(new UsernamePasswordAuthenticationToken(req.getEmail(), req.getPassword()));
+        Authentication authentication;
+        try {
+            authentication = authManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(req.getEmail(), req.getPassword()));
+        } catch (DisabledException | LockedException e) {
+            throw refusCompteInactif(req, e);
+        }
 
         // 2. loadUserByUsername retourne maintenant un UserDetailsImpl
-        //    Cast direct — plus besoin de recharger l'entité séparément
         UserDetailsImpl principal = (UserDetailsImpl) authentication.getPrincipal();
-        //UserDetailsImpl principal = (UserDetailsImpl) userDetailsService.loadUserByUsername(req.getEmail());
-
 
         Utilisateur utilisateur = principal.getUtilisateur();
 
@@ -82,6 +91,24 @@ public class AuthService {
                 utilisateur.getStatut().name()
         );
     }
+
+    // [NOUVEAU] ↓
+    /**
+     * Compte inactif : l'état n'est expliqué qu'avec le bon mot de passe. Sans lui, la réponse est celle d'un mauvais
+     * mot de passe, comme pour un e-mail inconnu.
+     */
+    private RuntimeException refusCompteInactif(LoginRequest req, AuthenticationException origine) {
+        Utilisateur u = utilisateurRepository.findByEmail(req.getEmail()).orElse(null);
+        if (u == null || !passwordEncoder.matches(req.getPassword(), u.getMotDePasseHash())) {
+            return new BadCredentialsException("Identifiants invalides");
+        }
+        if (u.getStatut() == StatutUtilisateur.EN_ATTENTE) {
+            return new BusinessException("COMPTE_EN_ATTENTE",
+                    "Votre demande de compte est en attente de validation. Vous pourrez vous connecter dès qu'elle aura été approuvée.");
+        }
+        return origine;   // compte désactivé ou suspendu : message habituel
+    }
+    // [NOUVEAU] ↑
 
     @Transactional
     public void logout(String token, String email) {

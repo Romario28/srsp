@@ -1,9 +1,12 @@
 package com.entreprise.gestion.controller;
 
+import com.entreprise.gestion.dto.DemandeCompteRequest;
 import com.entreprise.gestion.dto.LoginRequest;
 import com.entreprise.gestion.dto.LoginResponse;
+import com.entreprise.gestion.exception.BusinessException;
 import com.entreprise.gestion.security.UserDetailsImpl;
 import com.entreprise.gestion.service.AuthService;
+import com.entreprise.gestion.service.DemandeCompteService;
 import com.entreprise.gestion.service.acces.ControleAcces;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -12,6 +15,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.authentication.LockedException;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -26,6 +30,7 @@ public class AuthController {
 
     private final AuthService authService;
     private final ControleAcces controleAcces;
+    private final DemandeCompteService demandeCompteService;   // [NOUVEAU]
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest req,
@@ -36,7 +41,9 @@ public class AuthController {
         } catch (BadCredentialsException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of("error", "Email ou mot de passe incorrect"));
-        } catch (DisabledException e) {
+        } catch (BusinessException e) {   // [NOUVEAU] compte en attente de validation
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", e.getMessage(), "code", e.getCode()));
+        } catch (DisabledException | LockedException e) {   // [MODIFIÉ] + LockedException
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(Map.of("error", "Compte désactivé ou suspendu"));
         } catch (Exception e) {
@@ -44,6 +51,17 @@ public class AuthController {
                     .body(Map.of("error", "Erreur serveur : " + e.getMessage()));
         }
     }
+
+    // [NOUVEAU] ↓ public : une demande ne donne aucun droit, un validateur doit l'approuver
+    @PostMapping("/demande-compte")
+    public ResponseEntity<Map<String, String>> demanderCompte(@Valid @RequestBody DemandeCompteRequest req,
+                                                              HttpServletRequest http) {
+        demandeCompteService.soumettre(req, http.getRemoteAddr());
+        return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("message",
+                "Votre demande est enregistrée. Elle sera examinée par un administrateur ou un chef : "
+                        + "vous pourrez vous connecter dès qu'elle sera approuvée."));
+    }
+    // [NOUVEAU] ↑
 
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(

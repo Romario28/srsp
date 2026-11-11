@@ -46,7 +46,7 @@ public class UtilisateurService {
     @Transactional(readOnly = true)
     public Page<UtilisateurDTO> findAll(Pageable pageable, UserDetailsImpl acteur) {
         if (acteur.hasRole("ADMIN")) {
-            return utilisateurRepository.findByCompteSystemeFalse(pageable).map(this::toDTO);
+            return utilisateurRepository.findByCompteSystemeFalseAndStatutNot(StatutUtilisateur.EN_ATTENTE, pageable).map(this::toDTO);
         }
         List<Utilisateur> visibles = visiblesPourChef(acteur);
         int debut = (int) Math.min(pageable.getOffset(), visibles.size());
@@ -179,12 +179,12 @@ public class UtilisateurService {
         }
     }
 
-    /** Comptes RH et Agent rattachés au périmètre du chef. Jamais : administrateurs, autres chefs, le chef lui-même, comptes système. */
+    /** Comptes RH et Agent rattachés au périmètre du chef. Jamais : administrateurs, autres chefs, le chef lui-même, comptes système, demandes en attente. */
     private List<Utilisateur> visiblesPourChef(UserDetailsImpl chef) {
         Perimetre perimetre = controleAcces.perimetreDe(chef);
         if (perimetre.estVide()) return List.of();
         List<Utilisateur> candidats = utilisateurRepository.findAll(Sort.by("email")).stream()
-                .filter(u -> !u.isCompteSysteme() && !u.getId().equals(chef.getId()))
+                .filter(u -> !u.isCompteSysteme() && !u.getId().equals(chef.getId()) && u.getStatut() != StatutUtilisateur.EN_ATTENTE)
                 .filter(u -> !aRole(u, ROLE_ADMIN) && !aRole(u, ROLE_CHEF) && (aRole(u, ROLE_RH) || aRole(u, ROLE_AGENT)))
                 .toList();
         List<String> matricules = candidats.stream().filter(u -> !aRole(u, ROLE_RH)).map(Utilisateur::getMatriculeAgent)
@@ -196,7 +196,7 @@ public class UtilisateurService {
 
     /** Compte RH : son périmètre doit tenir dans celui du chef. Compte Agent : l'agent lié doit être dans le périmètre du chef. */
     private boolean estDansLePerimetre(Perimetre chef, Utilisateur u, Function<String, Agent> agentDe) {
-        if (aRole(u, ROLE_ADMIN) || aRole(u, ROLE_CHEF) || u.isCompteSysteme()) return false;
+        if (aRole(u, ROLE_ADMIN) || aRole(u, ROLE_CHEF) || u.isCompteSysteme() || u.getStatut() == StatutUtilisateur.EN_ATTENTE) return false;
         if (aRole(u, ROLE_RH)) return chef.couvre(perimetreCompte(u));
         if (aRole(u, ROLE_AGENT)) {
             Agent agent = u.getMatriculeAgent() == null ? null : agentDe.apply(u.getMatriculeAgent());
