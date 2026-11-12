@@ -30,6 +30,7 @@ public class DataInitializer implements CommandLineRunner {
     private final UtilisateurRepository           utilisateurRepository;
     private final UtilisateurRoleRepository       utilisateurRoleRepository;
     private final PerimetreUtilisateurRepository  perimetreRepository;
+    private final DepartementRepository           departementRepository;   // [NOUVEAU]
     private final PasswordEncoder                 passwordEncoder;
 
     @Override
@@ -47,6 +48,12 @@ public class DataInitializer implements CommandLineRunner {
         Role roleAgent = role("ROLE_AGENT", "Agent : son propre espace", pRead);
 
         if (utilisateurRepository.count() > 0) return;
+
+        // [NOUVEAU] démonstration seulement : sans département, la page publique de demande ne peut pas être envoyée
+        if (departementRepository.count() == 0) {
+            departementRepository.save(Departement.builder()
+                    .libelle("(SRSP) Service Regional de la Solde et des Pensions").build());
+        }
 
         Utilisateur admin = compte("admin@entreprise.mg", "Admin123!", null, null, null);
         assignRole(admin, roleAdmin);

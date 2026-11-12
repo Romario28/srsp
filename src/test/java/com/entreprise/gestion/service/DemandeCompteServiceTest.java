@@ -5,6 +5,7 @@ import com.entreprise.gestion.dto.DemandeCompteDTO;
 import com.entreprise.gestion.dto.DemandeCompteRequest;
 import com.entreprise.gestion.dto.PerimetreDTO;
 import com.entreprise.gestion.dto.RefusRequest;
+import com.entreprise.gestion.entite.Departement;                  // [NOUVEAU]
 import com.entreprise.gestion.entite.Role;
 import com.entreprise.gestion.entite.StatutUtilisateur;
 import com.entreprise.gestion.entite.Utilisateur;
@@ -12,6 +13,7 @@ import com.entreprise.gestion.entite.UtilisateurRole;
 import com.entreprise.gestion.entite.anticipation.Agent;
 import com.entreprise.gestion.entite.anticipation.Ministere;
 import com.entreprise.gestion.exception.BusinessException;
+import com.entreprise.gestion.repository.DepartementRepository;    // [NOUVEAU]
 import com.entreprise.gestion.repository.RoleRepository;
 import com.entreprise.gestion.repository.UtilisateurRepository;
 import com.entreprise.gestion.repository.UtilisateurRoleRepository;
@@ -48,6 +50,7 @@ class DemandeCompteServiceTest {
     @Mock PasswordEncoder passwordEncoder;
     @Mock AuditService auditService;
     @Mock ControleAcces controleAcces;
+    @Mock DepartementRepository departementRepository;   // [NOUVEAU]
     @InjectMocks DemandeCompteService service;
 
     private UserDetailsImpl admin;
@@ -61,7 +64,7 @@ class DemandeCompteServiceTest {
     }
 
     private static DemandeCompteRequest demande(String matricule, String email, String profil) {
-        return new DemandeCompteRequest(matricule, "Nom", "Prenom", email, "password123", profil);
+        return new DemandeCompteRequest(matricule, "Nom", "Prenom", email, "password123", profil, 1L);   // [MODIFIÉ] + département
     }
 
     private static Utilisateur utilisateurEnAttente(Long id, String email, String matricule, String profil) {
@@ -88,6 +91,8 @@ class DemandeCompteServiceTest {
     void soumissionAjouteLInstanceRendueParLeDepot() {
         Role role = Role.builder().nomRole("ROLE_AGENT").build();
         UtilisateurRole geree = UtilisateurRole.builder().role(role).build();   // copie « gérée », distincte de l'original
+        Departement departement = Departement.builder().id(1L).libelle("(SRSP) Service Regional").build();   // [NOUVEAU]
+        when(departementRepository.findById(1L)).thenReturn(Optional.of(departement));                         // [NOUVEAU]
         when(passwordEncoder.encode(any())).thenReturn("hash");
         when(utilisateurRepository.save(any())).thenAnswer(i -> i.getArgument(0));
         when(roleRepository.findByNomRole("ROLE_AGENT")).thenReturn(Optional.of(role));
@@ -99,6 +104,16 @@ class DemandeCompteServiceTest {
         verify(utilisateurRepository).save(capture.capture());
         assertThat(capture.getValue().getStatut()).isEqualTo(StatutUtilisateur.EN_ATTENTE);
         assertThat(capture.getValue().getUtilisateurRoles()).containsExactly(geree);
+        assertThat(capture.getValue().getDepartement()).isSameAs(departement);   // [NOUVEAU]
+    }
+
+    // [NOUVEAU]
+    @Test
+    void soumissionRefuseeSiLeDepartementNExistePas() {
+        // departementRepository.findById(1L) renvoie Optional.empty() par défaut
+        assertThatThrownBy(() -> service.soumettre(demande("123456", "nouveau@x.mg", "ROLE_AGENT"), "127.0.0.1"))
+                .isInstanceOfSatisfying(BusinessException.class, e -> assertThat(e.getCode()).isEqualTo("DEPARTEMENT_INCONNU"));
+        verify(utilisateurRepository, never()).save(any());
     }
 
     @Test

@@ -58,6 +58,10 @@ public record Perimetre(boolean accesTotal, Set<String> ministeres, Set<String> 
         return inclus(ministeres, autre.ministeres) && inclus(soas, autre.soas) && inclus(fivs, autre.fivs);
     }
 
+    public boolean englobe(Perimetre autre) {
+        return couvre(autre);
+    }
+
     private static boolean dans(Set<String> permis, String code) {
         return permis.isEmpty() || (code != null && permis.contains(code));
     }

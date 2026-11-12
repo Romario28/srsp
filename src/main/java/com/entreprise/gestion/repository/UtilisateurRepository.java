@@ -25,6 +25,9 @@ public interface UtilisateurRepository extends JpaRepository<Utilisateur, Long> 
     List<Utilisateur> findByStatutOrderByDateCreationAsc(StatutUtilisateur statut);
     // [NOUVEAU] ↑
 
+    // [NOUVEAU] sert à refuser la suppression d'un département utilisé
+    long countByDepartementId(Long idDepartement);
+
     Optional<Utilisateur> findByMatriculeAgent(String matriculeAgent);
 
     /** Liste API : exclut les comptes système et les demandes en attente (elles ont leur écran). */

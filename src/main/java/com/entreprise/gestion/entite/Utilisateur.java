@@ -45,7 +45,7 @@ public class Utilisateur {
     @NotNull
     @Email
     @Size(max = 150)
-    @Column(name = "email", nullable = false, unique = true, length = 150)
+    @Column(name = "email", nullable = false, length = 150)
     private String email;
 
     @JsonIgnore
@@ -68,6 +68,12 @@ public class Utilisateur {
     @Column(name = "matricule_agent", length = 20)
     private String matriculeAgent;
     // [NOUVEAU] ↑
+
+    // [NOUVEAU] département déclaré : information seulement, n'ouvre aucun droit
+    @JsonIgnore
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_departement", foreignKey = @ForeignKey(name = "FK_utilisateur_departement"))
+    private Departement departement;
 
     @NotNull
     @Enumerated(EnumType.STRING)

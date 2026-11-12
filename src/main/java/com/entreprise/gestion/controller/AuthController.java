@@ -1,12 +1,14 @@
 package com.entreprise.gestion.controller;
 
 import com.entreprise.gestion.dto.DemandeCompteRequest;
+import com.entreprise.gestion.dto.DepartementDTO;
 import com.entreprise.gestion.dto.LoginRequest;
 import com.entreprise.gestion.dto.LoginResponse;
 import com.entreprise.gestion.exception.BusinessException;
 import com.entreprise.gestion.security.UserDetailsImpl;
 import com.entreprise.gestion.service.AuthService;
 import com.entreprise.gestion.service.DemandeCompteService;
+import com.entreprise.gestion.service.DepartementService;
 import com.entreprise.gestion.service.acces.ControleAcces;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -21,6 +23,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -34,6 +37,7 @@ public class AuthController {
     private final AuthService authService;
     private final ControleAcces controleAcces;
     private final DemandeCompteService demandeCompteService;   // [NOUVEAU]
+    private final DepartementService departementService;       // [NOUVEAU]
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest req,
@@ -58,6 +62,12 @@ public class AuthController {
                             + reference + ".",
                     "code", "ERREUR_INTERNE"));
         }
+    }
+
+    // [NOUVEAU] liste publique (formulaire de demande) : identifiant et libellé seulement
+    @GetMapping("/departements")
+    public ResponseEntity<List<DepartementDTO>> departements() {
+        return ResponseEntity.ok(departementService.lister());
     }
 
     // [NOUVEAU] ↓ public : une demande ne donne aucun droit, un validateur doit l'approuver

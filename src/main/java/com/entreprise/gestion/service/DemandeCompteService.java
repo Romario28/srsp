@@ -6,6 +6,7 @@ import com.entreprise.gestion.dto.DemandeCompteDTO;
 import com.entreprise.gestion.dto.DemandeCompteRequest;
 import com.entreprise.gestion.dto.PerimetreDTO;
 import com.entreprise.gestion.dto.RefusRequest;
+import com.entreprise.gestion.entite.Departement;                   // [NOUVEAU]
 import com.entreprise.gestion.entite.DimensionPerimetre;
 import com.entreprise.gestion.entite.PerimetreUtilisateur;
 import com.entreprise.gestion.entite.Role;
@@ -14,6 +15,7 @@ import com.entreprise.gestion.entite.Utilisateur;
 import com.entreprise.gestion.entite.UtilisateurRole;
 import com.entreprise.gestion.entite.anticipation.Agent;
 import com.entreprise.gestion.exception.BusinessException;
+import com.entreprise.gestion.repository.DepartementRepository;     // [NOUVEAU]
 import com.entreprise.gestion.repository.RoleRepository;
 import com.entreprise.gestion.repository.UtilisateurRepository;
 import com.entreprise.gestion.repository.UtilisateurRoleRepository;
@@ -57,6 +59,7 @@ public class DemandeCompteService {
     private final PasswordEncoder           passwordEncoder;
     private final AuditService              auditService;
     private final ControleAcces             controleAcces;
+    private final DepartementRepository     departementRepository;   // [NOUVEAU]
 
     @Value("${comptes.demandes-max-en-attente:200}")
     private int maxDemandesEnAttente;
@@ -89,12 +92,21 @@ public class DemandeCompteService {
                             + "Essayez de vous connecter. Si vous ne reconnaissez pas cette situation, contactez un administrateur.");
         }
 
+        // [NOUVEAU] département : informatif, mais il doit exister
+        if (req.departementId() == null) {
+            throw new BusinessException("DEPARTEMENT_REQUIS", "Le département est obligatoire.");
+        }
+        Departement departement = departementRepository.findById(req.departementId())
+                .orElseThrow(() -> new BusinessException("DEPARTEMENT_INCONNU",
+                        "Le département choisi n'existe plus : actualisez la page et choisissez-en un autre."));
+
         Utilisateur u = Utilisateur.builder()
                 .email(email.toLowerCase())
                 .motDePasseHash(passwordEncoder.encode(req.password()))
                 .nom(nettoyer(req.nom()))
                 .prenom(nettoyer(req.prenom()))
                 .matriculeAgent(matricule)
+                .departement(departement)   // [NOUVEAU]
                 .statut(StatutUtilisateur.EN_ATTENTE)
                 .compteSysteme(false)
                 .agirSurSonDossier(false)
@@ -109,7 +121,8 @@ public class DemandeCompteService {
         saved.getUtilisateurRoles().add(ur);
 
         auditService.logAnonyme("Système", "DEMANDE_COMPTE",
-                "Demande de compte pour " + saved.getEmail() + " (profil " + profil + ", matricule " + matricule + ")", ip);
+                "Demande de compte pour " + saved.getEmail() + " (profil " + profil + ", matricule " + matricule
+                        + ", département " + departement.getLibelle() + ")", ip);   // [MODIFIÉ]
     }
 
     @Transactional(readOnly = true)
@@ -138,7 +151,17 @@ public class DemandeCompteService {
         if (acteur.hasRole("ADMIN")) {
             return utilisateurRepository.countByStatut(StatutUtilisateur.EN_ATTENTE);
         }
-        return lister(acteur).size();
+
+        Perimetre perimetreChef = controleAcces.perimetreDe(acteur);
+        if (perimetreChef.estVide()) return 0;
+
+        List<Utilisateur> enAttente = utilisateurRepository.findByStatutOrderByDateCreationAsc(StatutUtilisateur.EN_ATTENTE);
+        List<String> matricules = enAttente.stream().map(Utilisateur::getMatriculeAgent)
+                .filter(Objects::nonNull).distinct().toList();
+        Map<String, Agent> agents = matricules.isEmpty() ? Map.of()
+                : agentRepository.findAllById(matricules).stream().collect(Collectors.toMap(Agent::getMatricule, a -> a));
+
+        return enAttente.stream().filter(u -> visiblePourChef(u, perimetreChef, agents::get)).count();
     }
 
     @Transactional
@@ -146,40 +169,43 @@ public class DemandeCompteService {
         Utilisateur cible = utilisateurRepository.findById(id)
                 .orElseThrow(() -> new BusinessException("DEMANDE_INTROUVABLE", "Demande introuvable : " + id));
         if (cible.getStatut() != StatutUtilisateur.EN_ATTENTE) {
-            throw new BusinessException("DEMANDE_INTROUVABLE", "Demande introuvable : " + id);
+            throw new BusinessException("DEMANDE_DEJA_TRAITEE", "Cette demande a déjà été traitée.");
         }
 
-        String profil = profilDe(cible);
-        boolean admin = acteur.hasRole("ADMIN");
-
-        if (!admin) {
+        // Le chef ne peut approuver que si la demande est dans son périmètre (RH ou Agent)
+        if (!acteur.hasRole("ADMIN")) {
             Perimetre perimetreChef = controleAcces.perimetreDe(acteur);
-            Agent agent = cible.getMatriculeAgent() == null ? null : agentRepository.findById(cible.getMatriculeAgent()).orElse(null);
+            Agent agent = cible.getMatriculeAgent() == null ? null
+                    : agentRepository.findById(cible.getMatriculeAgent()).orElse(null);
             if (!visiblePourChef(cible, perimetreChef, m -> agent)) {
-                throw new BusinessException("DEMANDE_INTROUVABLE", "Demande introuvable : " + id);
-            }
-            if (!ROLE_AGENT.equals(profil)) {
-                Perimetre demandePerimetre = perimetreDepuis(req != null ? req.perimetre() : null);
-                if (demandePerimetre.estVide()) {
-                    throw new BusinessException("PERIMETRE_REQUIS", "Vous devez accorder au moins une valeur de périmètre pour pouvoir approuver.");
-                }
-                if (!perimetreChef.couvre(demandePerimetre)) {
-                    throw new BusinessException("PERIMETRE_HORS_LIMITES", "Le périmètre accordé doit être contenu dans le vôtre.");
-                }
+                throw new BusinessException("ACCES_REFUSE", "Vous ne pouvez pas approuver cette demande : hors de votre périmètre.");
             }
         }
 
-        if (ROLE_AGENT.equals(profil)) {
-            cible.getPerimetres().clear();
-        } else {
-            appliquerPerimetre(cible, req != null ? req.perimetre() : null);
+        // Attribution du rôle : celui demandé à l'origine (jamais ADMIN)
+        String profil = profilDe(cible);
+        if (ROLE_ADMIN.equals(profil)) {
+            throw new BusinessException("PROFIL_INTERDIT", "Une demande publique ne peut jamais obtenir le rôle ADMIN.");
         }
 
+        // Chef : validation du périmètre demandé par le validateur
+        if (!acteur.hasRole("ADMIN")) {
+            // Un chef ne peut attribuer que des accès inclus dans son propre périmètre
+            Perimetre accorde = perimetreDepuis(req != null ? req.perimetre() : null);
+            Perimetre perimetreChef = controleAcces.perimetreDe(acteur);
+            if (!perimetreChef.englobe(accorde)) {
+                throw new BusinessException("PERIMETRE_HORS_CHEF",
+                        "Vous ne pouvez accorder que des accès situés dans votre propre périmètre.");
+            }
+        }
+
+        appliquerPerimetre(cible, req != null ? req.perimetre() : null);
         cible.setStatut(StatutUtilisateur.ACTIF);
         utilisateurRepository.save(cible);
 
         auditService.logAvecEntite(acteur.getUtilisateur(), "APPROBATION_COMPTE",
-                "Compte activé pour " + cible.getEmail() + " (profil " + profil + ", matricule " + cible.getMatriculeAgent() + ") par " + acteur.getNomComplet(), null);
+                "Demande de compte approuvée pour " + cible.getEmail() + " (profil " + profil + ", matricule "
+                        + cible.getMatriculeAgent() + ") par " + acteur.getNomComplet(), null);
     }
 
     @Transactional
@@ -187,14 +213,15 @@ public class DemandeCompteService {
         Utilisateur cible = utilisateurRepository.findById(id)
                 .orElseThrow(() -> new BusinessException("DEMANDE_INTROUVABLE", "Demande introuvable : " + id));
         if (cible.getStatut() != StatutUtilisateur.EN_ATTENTE) {
-            throw new BusinessException("DEMANDE_INTROUVABLE", "Demande introuvable : " + id);
+            throw new BusinessException("DEMANDE_DEJA_TRAITEE", "Cette demande a déjà été traitée.");
         }
 
         if (!acteur.hasRole("ADMIN")) {
             Perimetre perimetreChef = controleAcces.perimetreDe(acteur);
-            Agent agent = cible.getMatriculeAgent() == null ? null : agentRepository.findById(cible.getMatriculeAgent()).orElse(null);
+            Agent agent = cible.getMatriculeAgent() == null ? null
+                    : agentRepository.findById(cible.getMatriculeAgent()).orElse(null);
             if (!visiblePourChef(cible, perimetreChef, m -> agent)) {
-                throw new BusinessException("DEMANDE_INTROUVABLE", "Demande introuvable : " + id);
+                throw new BusinessException("ACCES_REFUSE", "Vous ne pouvez pas refuser cette demande : hors de votre périmètre.");
             }
         }
 
@@ -224,7 +251,8 @@ public class DemandeCompteService {
         AgentLieDTO agentLie = agent != null ? AgentLieDTO.de(agent) : AgentLieDTO.absent(matricule != null ? matricule : "");
         PerimetreDTO perimetreSuggere = perimetreSuggere(agent);
         return new DemandeCompteDTO(u.getId(), u.getEmail(), u.getNom(), u.getPrenom(), matricule,
-                profilDe(u), u.getDateCreation(), agentLie, perimetreSuggere);
+                profilDe(u), u.getDateCreation(), agentLie, perimetreSuggere,
+                u.getDepartement() != null ? u.getDepartement().getLibelle() : null);   // [MODIFIÉ] + département
     }
 
     private static String profilDe(Utilisateur u) {
