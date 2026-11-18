@@ -62,8 +62,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/dossiers/*/demarrage", "/api/dossiers/*/sans-suite", "/api/dossiers/*/reouverture")
                                 .hasAnyRole("ADMIN", "RH", "CHEF", "AGENT")
 
-                        // anticipation, alertes, dossiers, tableau de bord, exports : ADMIN, RH, CHEF (le périmètre est imposé par les services)
-                        .requestMatchers("/api/anticipation/**", "/api/alertes/**", "/api/dossiers/**",
+                        // anticipation, dossiers, tableau de bord, exports : ADMIN, RH, CHEF (le périmètre est imposé par les services)
+                        .requestMatchers("/api/anticipation/**", "/api/dossiers/**",
                                 "/api/dashboard/**", "/api/exports/**").hasAnyRole("ADMIN", "RH", "CHEF")
 
                         // espace personnel de l'agent

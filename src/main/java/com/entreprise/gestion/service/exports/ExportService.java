@@ -3,22 +3,15 @@ package com.entreprise.gestion.service.exports;
 import com.entreprise.gestion.entite.anticipation.Agent;
 import com.entreprise.gestion.entite.anticipation.TypeAnticipation;
 import com.entreprise.gestion.security.UserDetailsImpl;
-import com.entreprise.gestion.repository.anticipation.AlerteRepository;
-import com.entreprise.gestion.repository.referentiel.AgentRepository;
-import com.entreprise.gestion.entite.anticipation.Alerte;
 import com.entreprise.gestion.service.AuditService;
 import com.entreprise.gestion.service.anticipation.*;
-import com.entreprise.gestion.service.dossier.CleDossier;
 import com.entreprise.gestion.service.dossier.DossierResume;
-import com.entreprise.gestion.service.dossier.SuiviDossiers;
-import com.entreprise.gestion.service.acces.PerimetreCourant;
 import com.entreprise.gestion.service.dossier.DossierService;
 import com.entreprise.gestion.service.dossier.VueDossier;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xssf.streaming.SXSSFWorkbook;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.io.IOException;
@@ -35,22 +28,16 @@ public class ExportService {
     static final String FORMAT_DATE_HEURE = "dd/mm/yyyy hh:mm";
     private static final int LARGEUR_MIN = 16;
     private static final Map<String,Integer> LARGEURS = Map.of("AGENT_NOM",24,"AGENT_PRENOMS",28,"DETAILS",70,
-            "TYPE_ANOMALIE",44,"ACQUITTEE_PAR",32,"DOSSIER_MOTIF_SANS_SUITE",40);
+            "TYPE_ANOMALIE",44,"DOSSIER_MOTIF_SANS_SUITE",40);
     private final AnticipationService anticipation;
     private final CalendrierService calendrier;
     private final AuditService audit;
-    private final AlerteRepository alerteRepository;
-    private final AgentRepository agentRepository;
-    private final SuiviDossiers suiviDossiers;
     private final DossierService dossierService;
-    private final PerimetreCourant perimetreCourant;
 
     public ExportService(AnticipationService anticipation, CalendrierService calendrier, AuditService audit,
-                         AlerteRepository alerteRepository, AgentRepository agentRepository,SuiviDossiers suiviDossiers,
-                         DossierService dossierService, PerimetreCourant perimetreCourant) {
+                         DossierService dossierService) {
         this.anticipation=anticipation; this.calendrier=calendrier; this.audit=audit;
-        this.alerteRepository=alerteRepository; this.agentRepository=agentRepository; this.suiviDossiers=suiviDossiers; this.dossierService=dossierService;
-        this.perimetreCourant=perimetreCourant;
+        this.dossierService=dossierService;
     }
 
     @Transactional(readOnly = true)
@@ -61,22 +48,7 @@ public class ExportService {
         FiltreAgents filtre = d.filtre()==null ? FiltreAgents.AUCUN : d.filtre();
         LocalDate aujourd=LocalDate.now();
         boolean avecDossier=d.ecran()!=Ecran.ANOMALIES;
-        if (d.ecran()==Ecran.ALERTES) {
-            extra.addAll(List.of("TYPE_ALERTE","DATE_PREPARATION","DATE_ECHEANCE","STATUT_ALERTE","DATE_DETECTION","DATE_ACQUITTEMENT","ACQUITTEE_PAR"));
-            List<Alerte> alertes=alerteRepository.rechercher(d.type(),d.statutAlerte(),d.matricule(),filtre,perimetreCourant.get(),Pageable.unpaged()).getContent();
-            Map<String,Agent> agents=new HashMap<>();
-            List<String> matricules=alertes.stream().map(Alerte::getMatriculeAgent).distinct().toList();
-            for(int i=0;i<matricules.size();i+=500) agentRepository.findAvecReferences(matricules.subList(i,Math.min(i+500,matricules.size()))).forEach(a->agents.put(a.getMatricule(),a));
-            Map<CleDossier,DossierResume> dossiers=suiviDossiers.de(matricules);
-            for(Alerte a:alertes) {
-                Object[] vals={a.getType().name(),a.getDatePreparation(),a.getDateEcheance(),a.getStatut().name(),a.getDateDetection(),a.getDateAcquittement(),a.getAcquitteePar()==null?null:a.getAcquitteePar().getEmail()};
-                DossierResume dossier=a.getDateEcheance()==null?null:dossiers.get(new CleDossier(a.getMatriculeAgent(),a.getType(),a.getDateEcheance()));
-                Object[] valeurs=ajouterDossier(vals,dossier,aujourd);
-                Agent agent=agents.get(a.getMatriculeAgent());
-                if(agent!=null) lignes.add(ligneBase(agent,valeurs));
-                else { Object[] base=new Object[BASE.size()+valeurs.length]; base[1]=a.getMatriculeAgent(); System.arraycopy(valeurs,0,base,BASE.size(),valeurs.length); lignes.add(base); }
-            }
-        } else if (d.ecran()==Ecran.DOSSIERS) {
+        if (d.ecran()==Ecran.DOSSIERS) {
             extra.addAll(List.of("TYPE_DOSSIER","DATE_PREPARATION","DATE_ECHEANCE"));
             dossierService.pourExport(vueDe(d),d.inverse(),d.parAgent(),d.multiples(),d.type(),d.matricule(),filtre)
                     .forEach(dos -> lignes.add(ligneBase(dos.getAgent(),ajouterDossier(new Object[]{dos.getType().name(),dos.getDatePreparation(),dos.getDateEcheance()},DossierResume.de(dos),aujourd))));
@@ -143,10 +115,19 @@ public class ExportService {
                 for(String col:BASE){h.createCell(i).setCellValue(col);sh.setColumnWidth(i,largeur(col)*256);i++;}
                 for(String col:extra){h.createCell(i).setCellValue(col);sh.setColumnWidth(i,largeur(col)*256);i++;}
                 sh.createFreezePane(0,1); sh.setAutoFilter(new CellRangeAddress(0,0,0,i-1));
-                int n=1; for(Object[] vals:lignes){Row r=sh.createRow(n++);for(int j=0;j<vals.length;j++){Object v=vals[j];if(v==null)continue;Cell c=r.createCell(j);
-                    if(v instanceof LocalDate d){c.setCellValue(DateUtil.getExcelDate(d.atStartOfDay()));c.setCellStyle(date);}
-                    else if(v instanceof LocalDateTime dh){c.setCellValue(DateUtil.getExcelDate(dh));c.setCellStyle(dateHeure);}
-                    else if(v instanceof Number x)c.setCellValue(x.doubleValue());else c.setCellValue(v.toString());}}
+                int n=1;
+                for(Object[] vals:lignes){
+                    Row r=sh.createRow(n++);
+                    for(int j=0;j<vals.length;j++){
+                        Object v=vals[j];
+                        if(v==null)continue;
+                        Cell c=r.createCell(j);
+                        if(v instanceof LocalDate d){c.setCellValue(DateUtil.getExcelDate(d.atStartOfDay()));c.setCellStyle(date);}
+                        else if(v instanceof LocalDateTime dh){c.setCellValue(DateUtil.getExcelDate(dh));c.setCellStyle(dateHeure);}
+                        else if(v instanceof Number x)c.setCellValue(x.doubleValue());
+                        else c.setCellValue(v.toString());
+                    }
+                }
                 wb.write(out);
             }
         }

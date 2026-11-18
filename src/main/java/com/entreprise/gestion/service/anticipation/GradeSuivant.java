@@ -22,14 +22,15 @@ public record GradeSuivant(CasGradeSuivant cas, List<String> codes) {
         return new GradeSuivant(CasGradeSuivant.AMBIGU, codes);
     }
 
-    /** Valeur compacte stockée dans la colonne grade_suivant. */
-    public String valeurStockee() {
-        return String.join(", ", codes);
-    }
-
-    public static GradeSuivant depuisStockage(CasGradeSuivant cas, String valeur) {
-        if (cas == null) return null;
-        if (valeur == null || valeur.isBlank()) return new GradeSuivant(cas, List.of());
-        return new GradeSuivant(cas, List.of(valeur.split(",\\s*")));
-    }
+    // SUPPRIMÉ : servait uniquement à stocker le grade suivant dans l'alerte
+    // /** Valeur compacte stockée dans la colonne grade_suivant. */
+    // public String valeurStockee() {
+    //     return String.join(", ", codes);
+    // }
+    //
+    // public static GradeSuivant depuisStockage(CasGradeSuivant cas, String valeur) {
+    //     if (cas == null) return null;
+    //     if (valeur == null || valeur.isBlank()) return new GradeSuivant(cas, List.of());
+    //     return new GradeSuivant(cas, List.of(valeur.split(",\\s*")));
+    // }
 }

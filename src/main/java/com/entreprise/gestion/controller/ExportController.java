@@ -1,7 +1,6 @@
 package com.entreprise.gestion.controller;
 
 import com.entreprise.gestion.entite.anticipation.CategorieCalendrier;
-import com.entreprise.gestion.entite.anticipation.StatutAlerte;
 import com.entreprise.gestion.entite.anticipation.TypeAnticipation;
 import com.entreprise.gestion.security.UserDetailsImpl;
 import com.entreprise.gestion.service.anticipation.CritereDate;
@@ -34,7 +33,7 @@ public class ExportController {
             @RequestParam(required=false) LocalDate dateDebut, @RequestParam(required=false) LocalDate dateFin,
             @RequestParam(required=false) CritereDate critereDate,
             @RequestParam(required=false) Set<CategorieCalendrier> typesCalendrier,
-            @RequestParam(required=false) TypeAnticipation type, @RequestParam(required=false) StatutAlerte statut,
+            @RequestParam(required=false) TypeAnticipation type,
             @RequestParam(required=false) String matricule,
             @RequestParam(required=false) VueDossier vue,
             @RequestParam(defaultValue="false") boolean inverse,
@@ -43,7 +42,7 @@ public class ExportController {
             @ModelAttribute FiltreAgents filtre,
             @AuthenticationPrincipal UserDetailsImpl principal, HttpServletRequest requete,
             HttpServletResponse reponse) throws IOException {
-        DemandeExport demande=new DemandeExport(Ecran.depuisSlug(ecran),filtre,prevenanceMois,retardMois,dateDebut,dateFin,critereDate,typesCalendrier,type,statut,matricule==null||matricule.isBlank()?null:matricule.trim(),vue,inverse,parAgent,multiples);
+        DemandeExport demande=new DemandeExport(Ecran.depuisSlug(ecran),filtre,prevenanceMois,retardMois,dateDebut,dateFin,critereDate,typesCalendrier,type,matricule==null||matricule.isBlank()?null:matricule.trim(),vue,inverse,parAgent,multiples);
         ExportService.Fichier fichier=exportService.preparer(demande,principal,requete.getRemoteAddr());
         reponse.setContentType(XLSX);
         reponse.setHeader(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename(fichier.nom()).build().toString());

@@ -1,4 +1,5 @@
 -- 1. Contraintes qui listent les types (H2)
+-- AJOUTÉ : la table ALERTE n'existe plus après docs/migration_suppression_alertes.sql ; elle n'apparaît alors pas dans le résultat.
 SELECT tc.TABLE_SCHEMA, tc.TABLE_NAME, tc.CONSTRAINT_NAME, cc.CHECK_CLAUSE
 FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
 JOIN INFORMATION_SCHEMA.CHECK_CONSTRAINTS cc
@@ -9,6 +10,7 @@ WHERE tc.CONSTRAINT_TYPE = 'CHECK'
   AND cc.CHECK_CLAUSE LIKE '%TITULARISATION%';
 
 -- 2. Pour chaque ligne trouvée : supprimer la contrainte (nom lu ci-dessus) puis la recréer avec la nouvelle valeur
+-- AJOUTÉ : les deux lignes ci-dessous ne concernent que les bases où la table alerte existe encore
 -- ALTER TABLE anticipation.alerte DROP CONSTRAINT <NOM>;
 -- ALTER TABLE anticipation.alerte ADD CONSTRAINT ck_alerte_type
 --   CHECK (type_anticipation IN ('DEPART_RETRAITE','AVANCEMENT','AVANCEMENT_CLASSE','TITULARISATION','FIN_CONTRAT','INTEGRATION','ANOMALIE'));
@@ -19,7 +21,7 @@ WHERE tc.CONSTRAINT_TYPE = 'CHECK'
 -- ALTER TABLE referentiel_rh.configuration_delai ADD CONSTRAINT ck_config_delai_type
 --   CHECK (type_anticipation IN ('DEPART_RETRAITE','AVANCEMENT','AVANCEMENT_CLASSE','TITULARISATION','FIN_CONTRAT','INTEGRATION','ANOMALIE'));
 
--- 3. Les dossiers et alertes déjà créés sous « AVANCEMENT » sont requalifiés par le batch (aucune donnée à migrer ici).
+-- 3. MODIFIÉ : les dossiers déjà créés sous « AVANCEMENT » sont requalifiés par le batch (aucune donnée à migrer ici).
 --    Contrôle après le premier passage : doit renvoyer 0 ligne (aucun doublon d'échéance)
 SELECT matricule, date_echeance, COUNT(*) AS nb
 FROM anticipation.dossier
