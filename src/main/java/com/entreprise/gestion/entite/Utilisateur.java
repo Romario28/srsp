@@ -54,7 +54,6 @@ public class Utilisateur {
     @Column(name = "mot_de_passe_hash", nullable = false, length = 255)
     private String motDePasseHash;
 
-    // [NOUVEAU] ↓ identité de la personne, copiée de l'agent au moment du lien (modifiable)
     @Size(max = 100)
     @Column(name = "nom", length = 100)
     private String nom;
@@ -67,9 +66,8 @@ public class Utilisateur {
     @Size(max = 20)
     @Column(name = "matricule_agent", length = 20)
     private String matriculeAgent;
-    // [NOUVEAU] ↑
 
-    // [NOUVEAU] département déclaré : information seulement, n'ouvre aucun droit
+
     @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_departement", foreignKey = @ForeignKey(name = "FK_utilisateur_departement"))
@@ -98,19 +96,17 @@ public class Utilisateur {
     @Column(name = "date_derniere_connexion")
     private LocalDateTime dateDerniereConnexion;
 
-    // [SUPPRIMÉ] @OneToOne Employe employe;
 
     @OneToMany(mappedBy = "utilisateur", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private Set<UtilisateurRole> utilisateurRoles = new HashSet<>();
 
-    // [NOUVEAU] ↓ seule source des droits ; BatchSize évite une requête par compte dans la liste
     @JsonIgnore
     @OneToMany(mappedBy = "utilisateur", cascade = CascadeType.ALL, orphanRemoval = true)
     @BatchSize(size = 50)
     @Builder.Default
     private Set<PerimetreUtilisateur> perimetres = new HashSet<>();
-    // [NOUVEAU] ↑
+
 
     @JsonIgnore
     @OneToMany(mappedBy = "utilisateur", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -133,7 +129,6 @@ public class Utilisateur {
             .collect(Collectors.toSet());
     }
 
-    // [NOUVEAU] ↓
     /** « Prénom Nom », chaîne vide si aucun des deux n'est renseigné. */
     public String nomComplet() {
         String p = prenom == null ? "" : prenom.trim();
@@ -147,5 +142,5 @@ public class Utilisateur {
         String nomComplet = nomComplet();
         return (nomComplet.isEmpty() ? email : nomComplet) + " (matricule " + matriculeAgent + ")";
     }
-    // [NOUVEAU] ↑
+
 }
