@@ -39,21 +39,17 @@ public interface UtilisateurRepository extends JpaRepository<Utilisateur, Long> 
     Optional<Utilisateur> findByIdVisibleParApi(@Param("id") Long id);
 
     /** Compte les ADMIN actifs hors comptes système — garantit qu'on ne suspend jamais le dernier. */
+    // [MODIFIÉ] le rôle est directement sur l'utilisateur (était : JOIN u.utilisateurRoles ur JOIN ur.role r)
     @Query("""
-        SELECT COUNT(DISTINCT u) FROM Utilisateur u
-        JOIN u.utilisateurRoles ur JOIN ur.role r
-        WHERE r.nomRole = 'ROLE_ADMIN'
+        SELECT COUNT(u) FROM Utilisateur u
+        WHERE u.role.nomRole = 'ROLE_ADMIN'
           AND u.statut = com.entreprise.gestion.entite.StatutUtilisateur.ACTIF
           AND u.compteSysteme = false
         """)
     long countByRoleAdminActifExcludingSysteme();
 
-    @Query("""
-        SELECT u FROM Utilisateur u
-        LEFT JOIN FETCH u.utilisateurRoles ur
-        LEFT JOIN FETCH ur.role
-        WHERE u.email = :email
-        """)
-    Optional<Utilisateur> findByEmailWithRoles(@Param("email") String email);
+    // [MODIFIÉ] était : findByEmailWithRoles (LEFT JOIN FETCH u.utilisateurRoles ur LEFT JOIN FETCH ur.role)
+    @Query("SELECT u FROM Utilisateur u JOIN FETCH u.role WHERE u.email = :email")
+    Optional<Utilisateur> findByEmailWithRole(@Param("email") String email);
 
 }

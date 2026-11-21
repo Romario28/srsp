@@ -9,14 +9,12 @@ import com.entreprise.gestion.entite.Departement;                  // [NOUVEAU]
 import com.entreprise.gestion.entite.Role;
 import com.entreprise.gestion.entite.StatutUtilisateur;
 import com.entreprise.gestion.entite.Utilisateur;
-import com.entreprise.gestion.entite.UtilisateurRole;
 import com.entreprise.gestion.entite.anticipation.Agent;
 import com.entreprise.gestion.entite.anticipation.Ministere;
 import com.entreprise.gestion.exception.BusinessException;
 import com.entreprise.gestion.repository.DepartementRepository;    // [NOUVEAU]
 import com.entreprise.gestion.repository.RoleRepository;
 import com.entreprise.gestion.repository.UtilisateurRepository;
-import com.entreprise.gestion.repository.UtilisateurRoleRepository;
 import com.entreprise.gestion.repository.referentiel.AgentRepository;
 import com.entreprise.gestion.security.UserDetailsImpl;
 import com.entreprise.gestion.service.acces.ControleAcces;
@@ -46,7 +44,6 @@ class DemandeCompteServiceTest {
     @Mock UtilisateurRepository utilisateurRepository;
     @Mock AgentRepository agentRepository;
     @Mock RoleRepository roleRepository;
-    @Mock UtilisateurRoleRepository utilisateurRoleRepository;
     @Mock PasswordEncoder passwordEncoder;
     @Mock AuditService auditService;
     @Mock ControleAcces controleAcces;
@@ -58,8 +55,8 @@ class DemandeCompteServiceTest {
     @BeforeEach
     void init() {
         ReflectionTestUtils.setField(service, "maxDemandesEnAttente", 200);
-        Utilisateur uAdmin = Utilisateur.builder().id(1L).email("admin@x.mg").build();
-        uAdmin.getUtilisateurRoles().add(UtilisateurRole.builder().utilisateur(uAdmin).role(Role.builder().nomRole("ROLE_ADMIN").build()).build());
+        // [MODIFIÉ] rôle posé directement sur le compte
+        Utilisateur uAdmin = Utilisateur.builder().id(1L).email("admin@x.mg").role(Role.builder().nomRole("ROLE_ADMIN").build()).build();
         admin = new UserDetailsImpl(uAdmin);
     }
 
@@ -68,9 +65,8 @@ class DemandeCompteServiceTest {
     }
 
     private static Utilisateur utilisateurEnAttente(Long id, String email, String matricule, String profil) {
-        Utilisateur u = Utilisateur.builder().id(id).email(email).matriculeAgent(matricule).statut(StatutUtilisateur.EN_ATTENTE).build();
-        u.getUtilisateurRoles().add(UtilisateurRole.builder().utilisateur(u).role(Role.builder().nomRole(profil).build()).build());
-        return u;
+        return Utilisateur.builder().id(id).email(email).matriculeAgent(matricule).statut(StatutUtilisateur.EN_ATTENTE)
+                .role(Role.builder().nomRole(profil).build()).build();   // [MODIFIÉ]
     }
 
     @Test
@@ -86,25 +82,33 @@ class DemandeCompteServiceTest {
                 .isInstanceOfSatisfying(BusinessException.class, e -> assertThat(e.getCode()).isEqualTo("DEMANDE_IMPOSSIBLE"));
     }
 
-    // [NOUVEAU] régression : la soumission réussie doit ajouter à la collection l'instance rendue par save(), pas l'original
+    // [MODIFIÉ] remplace soumissionAjouteLInstanceRendueParLeDepot : le rôle est un champ du compte
     @Test
-    void soumissionAjouteLInstanceRendueParLeDepot() {
+    void soumissionEnregistreLeRoleDemandeSurLeCompte() {
         Role role = Role.builder().nomRole("ROLE_AGENT").build();
-        UtilisateurRole geree = UtilisateurRole.builder().role(role).build();   // copie « gérée », distincte de l'original
-        Departement departement = Departement.builder().id(1L).libelle("(SRSP) Service Regional").build();   // [NOUVEAU]
-        when(departementRepository.findById(1L)).thenReturn(Optional.of(departement));                         // [NOUVEAU]
+        Departement departement = Departement.builder().id(1L).libelle("(SRSP) Service Regional").build();
+        when(departementRepository.findById(1L)).thenReturn(Optional.of(departement));
         when(passwordEncoder.encode(any())).thenReturn("hash");
-        when(utilisateurRepository.save(any())).thenAnswer(i -> i.getArgument(0));
         when(roleRepository.findByNomRole("ROLE_AGENT")).thenReturn(Optional.of(role));
-        when(utilisateurRoleRepository.save(any())).thenReturn(geree);
+        when(utilisateurRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
         service.soumettre(demande("123456", "nouveau@x.mg", "ROLE_AGENT"), "127.0.0.1");
 
         ArgumentCaptor<Utilisateur> capture = ArgumentCaptor.forClass(Utilisateur.class);
         verify(utilisateurRepository).save(capture.capture());
         assertThat(capture.getValue().getStatut()).isEqualTo(StatutUtilisateur.EN_ATTENTE);
-        assertThat(capture.getValue().getUtilisateurRoles()).containsExactly(geree);
-        assertThat(capture.getValue().getDepartement()).isSameAs(departement);   // [NOUVEAU]
+        assertThat(capture.getValue().getRole()).isSameAs(role);
+        assertThat(capture.getValue().getDepartement()).isSameAs(departement);
+    }
+
+    // [NOUVEAU]
+    @Test
+    void soumissionRefuseeSiLeRoleEstInconnu() {
+        when(departementRepository.findById(1L)).thenReturn(Optional.of(Departement.builder().id(1L).libelle("D").build()));
+        // roleRepository.findByNomRole(…) renvoie Optional.empty() par défaut
+        assertThatThrownBy(() -> service.soumettre(demande("123456", "nouveau@x.mg", "ROLE_AGENT"), "127.0.0.1"))
+                .isInstanceOfSatisfying(BusinessException.class, e -> assertThat(e.getCode()).isEqualTo("ROLE_INCONNU"));
+        verify(utilisateurRepository, never()).save(any());
     }
 
     // [NOUVEAU]
@@ -118,8 +122,7 @@ class DemandeCompteServiceTest {
 
     @Test
     void chefNeVoitQueLesDemandesDansSonPerimetre() {
-        Utilisateur uChef = Utilisateur.builder().id(2L).email("chef@x.mg").build();
-        uChef.getUtilisateurRoles().add(UtilisateurRole.builder().utilisateur(uChef).role(Role.builder().nomRole("ROLE_CHEF").build()).build());
+        Utilisateur uChef = Utilisateur.builder().id(2L).email("chef@x.mg").role(Role.builder().nomRole("ROLE_CHEF").build()).build();
         UserDetailsImpl chef = new UserDetailsImpl(uChef);
         when(controleAcces.perimetreDe(chef)).thenReturn(new Perimetre(false, Set.of("05"), Set.of(), Set.of()));
 

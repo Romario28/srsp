@@ -5,8 +5,6 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
-import java.util.List;
-
 @Data
 public class CreateUtilisateurRequest {
 
@@ -20,10 +18,10 @@ public class CreateUtilisateurRequest {
     @Size(max = 100) private String nom;
     @Size(max = 100) private String prenom;
 
-    /** Lien informatif vers un agent (facultatif). N'ouvre aucun droit. */
+    /** Lien informatif vers un agent (facultatif, obligatoire pour un compte Agent). N'ouvre aucun droit. */
     @Size(max = 20) private String matriculeAgent;
 
-    private List<String> roles;          // vide : ROLE_AGENT
+    private String role;                 // [MODIFIÉ] un seul rôle (était : List<String> roles) ; vide : ROLE_AGENT
     private PerimetreDTO perimetre;
     private boolean agirSurSonDossier;   // profil Agent seulement ; ignoré sinon
 }

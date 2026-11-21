@@ -37,7 +37,7 @@ public class UtilisateurService {
     private final UtilisateurRepository     utilisateurRepository;
     private final AgentRepository           agentRepository;
     private final RoleRepository            roleRepository;
-    private final UtilisateurRoleRepository utilisateurRoleRepository;
+    // [SUPPRIMÉ] private final UtilisateurRoleRepository utilisateurRoleRepository;
     private final PasswordEncoder           passwordEncoder;
     private final AuditService              auditService;
     private final ControleAcces             controleAcces;
@@ -77,21 +77,23 @@ public class UtilisateurService {
         if (utilisateurRepository.existsByEmail(req.getEmail())) {
             throw new BusinessException("EMAIL_DEJA_UTILISE", "Email déjà utilisé : " + req.getEmail());
         }
-        List<String> roles = req.getRoles() == null || req.getRoles().isEmpty() ? List.of(ROLE_PAR_DEFAUT) : req.getRoles();
-        String profil = validerProfil(roles);
+        // [MODIFIÉ] un seul rôle ; vide : ROLE_AGENT
+        String profil = profilDemande(req.getRole());
         String matricule = nettoyer(req.getMatriculeAgent());
         exigerMatriculePourAgent(profil, matricule);
         verifierLienLibre(matricule, null);
+        Role role = roleDe(profil);   // [NOUVEAU] cherché avant de créer le compte : il est obligatoire
 
         Utilisateur u = Utilisateur.builder()
                 .email(req.getEmail()).motDePasseHash(passwordEncoder.encode(req.getPassword()))
                 .nom(nettoyer(req.getNom())).prenom(nettoyer(req.getPrenom())).matriculeAgent(matricule)
+                .role(role)   // [NOUVEAU]
                 .agirSurSonDossier(ROLE_AGENT.equals(profil) && req.isAgirSurSonDossier())
                 .statut(StatutUtilisateur.ACTIF).compteSysteme(false).build();
         reprendreIdentiteDeLAgent(u);
         Utilisateur saved = utilisateurRepository.save(u);
 
-        appliquerRoles(saved, roles, actor);
+        // [SUPPRIMÉ] appliquerRoles(saved, roles, actor);
         appliquerPerimetre(saved, ROLE_AGENT.equals(profil) ? null : req.getPerimetre());
 
         auditService.logAvecEntite(actor.getUtilisateur(), "CREATE_USER",
@@ -104,9 +106,10 @@ public class UtilisateurService {
 
     @Transactional
     public UtilisateurDetailDTO update(Long id, UpdateUtilisateurRequest req, UserDetailsImpl actor) {
-        String profil = validerProfil(req.roles());
+        String profil = validerProfil(req.role() == null ? null : req.role().trim());   // [MODIFIÉ]
         Utilisateur cible = visible(id);
         String ancienLien = cible.getMatriculeAgent();
+        String ancienProfil = nomRole(cible);   // [NOUVEAU]
         PerimetreDTO avant = perimetreDe(cible);
         boolean droitAvant = cible.isAgirSurSonDossier();
         String matricule = nettoyer(req.matriculeAgent());
@@ -118,14 +121,14 @@ public class UtilisateurService {
         cible.setMatriculeAgent(matricule);
         cible.setAgirSurSonDossier(ROLE_AGENT.equals(profil) && req.agirSurSonDossier());
         reprendreIdentiteDeLAgent(cible);
-        appliquerRoles(cible, req.roles(), actor);
+        changerRole(cible, profil, actor);   // [MODIFIÉ] était : appliquerRoles(cible, req.roles(), actor)
         appliquerPerimetre(cible, ROLE_AGENT.equals(profil) ? null : req.perimetre());
         utilisateurRepository.save(cible);
 
         PerimetreDTO apres = perimetreDe(cible);
         auditService.logAvecEntite(actor.getUtilisateur(), "UPDATE_USER",
                 "Modifié : " + cible.getEmail() + " — agent lié : " + libelleLien(ancienLien) + " → " + libelleLien(matricule)
-                        + ", profil " + profil
+                        + ", profil " + ancienProfil + " → " + profil   // [MODIFIÉ]
                         + (avant.equals(apres) ? ", périmètre inchangé" : ", périmètre : " + resume(avant) + " → " + resume(apres))
                         + (ROLE_AGENT.equals(profil) || droitAvant
                                 ? ", droit d'agir sur son dossier : " + oui(droitAvant) + " → " + oui(cible.isAgirSurSonDossier()) : "")
@@ -145,8 +148,7 @@ public class UtilisateurService {
             throw new BusinessException("AUTO_SUSPENSION_INTERDITE",
                     "Vous ne pouvez pas suspendre ou désactiver votre propre compte.");
         }
-        boolean cibleEstAdminActif = cible.getRoles().stream()
-                .anyMatch(r -> ROLE_ADMIN.equals(r.getNomRole())) && cible.getStatut() == StatutUtilisateur.ACTIF;
+        boolean cibleEstAdminActif = aRole(cible, ROLE_ADMIN) && cible.getStatut() == StatutUtilisateur.ACTIF;   // [MODIFIÉ]
         if (cibleEstAdminActif && !"ACTIF".equals(statut)
                 && utilisateurRepository.countByRoleAdminActifExcludingSysteme() <= 1) {
             throw new BusinessException("DERNIER_ADMIN", "Impossible : ce compte est le dernier administrateur actif.");
@@ -164,12 +166,16 @@ public class UtilisateurService {
         return saved;
     }
 
-    private static String validerProfil(List<String> demandes) {
-        Set<String> distincts = new LinkedHashSet<>(demandes);
-        if (distincts.size() != 1 || !PROFILS.contains(distincts.iterator().next())) {
+    /** Création : rôle absent ou vide = ROLE_AGENT. */
+    private static String profilDemande(String demande) {
+        return validerProfil(demande == null || demande.isBlank() ? ROLE_PAR_DEFAUT : demande.trim());
+    }
+
+    private static String validerProfil(String profil) {
+        if (profil == null || !PROFILS.contains(profil)) {
             throw new BusinessException("PROFIL_INVALIDE", "Un compte a un seul profil : Administrateur, Chef, RH ou Agent.");
         }
-        return distincts.iterator().next();
+        return profil;
     }
 
     private static void exigerMatriculePourAgent(String profil, String matricule) {
@@ -205,8 +211,18 @@ public class UtilisateurService {
         return false;
     }
 
+    // [MODIFIÉ] le compte porte un seul rôle (était : anyMatch sur la collection de rôles)
     private static boolean aRole(Utilisateur u, String role) {
-        return u.getRoles().stream().anyMatch(r -> role.equals(r.getNomRole()));
+        return u.getRole() != null && role.equals(u.getRole().getNomRole());
+    }
+
+    private static String nomRole(Utilisateur u) {
+        return u.getRole() == null ? null : u.getRole().getNomRole();
+    }
+
+    private Role roleDe(String nom) {
+        return roleRepository.findByNomRole(nom)
+                .orElseThrow(() -> new BusinessException("ROLE_INCONNU", "Rôle inconnu : " + nom));
     }
 
     private static Perimetre perimetreCompte(Utilisateur u) {
@@ -239,10 +255,12 @@ public class UtilisateurService {
         });
     }
 
-    private void appliquerRoles(Utilisateur cible, List<String> demandes, UserDetailsImpl actor) {
-        Set<String> voulus = new LinkedHashSet<>(demandes);
-        boolean etaitAdmin = cible.getRoles().stream().anyMatch(r -> ROLE_ADMIN.equals(r.getNomRole()));
-        if (etaitAdmin && !voulus.contains(ROLE_ADMIN)) {
+    /**
+     * [MODIFIÉ] remplace appliquerRoles : le compte change de rôle unique.
+     * Garde-fous : on ne retire pas son propre rôle d'administrateur, ni celui du dernier administrateur actif.
+     */
+    private void changerRole(Utilisateur cible, String profil, UserDetailsImpl actor) {
+        if (aRole(cible, ROLE_ADMIN) && !ROLE_ADMIN.equals(profil)) {
             if (cible.getId().equals(actor.getId())) {
                 throw new BusinessException("AUTO_RETRAIT_ADMIN", "Vous ne pouvez pas retirer votre propre rôle d'administrateur.");
             }
@@ -250,14 +268,7 @@ public class UtilisateurService {
                 throw new BusinessException("DERNIER_ADMIN", "Impossible : ce compte est le dernier administrateur actif.");
             }
         }
-        cible.getUtilisateurRoles().removeIf(ur -> !voulus.contains(ur.getRole().getNomRole()));
-        Set<String> presents = cible.getUtilisateurRoles().stream().map(ur -> ur.getRole().getNomRole()).collect(Collectors.toSet());
-        for (String nom : voulus) {
-            if (presents.contains(nom)) continue;
-            Role role = roleRepository.findByNomRole(nom)
-                    .orElseThrow(() -> new BusinessException("ROLE_INCONNU", "Rôle inconnu : " + nom));
-            cible.getUtilisateurRoles().add(utilisateurRoleRepository.save(UtilisateurRole.builder().utilisateur(cible).role(role).build()));
-        }
+        cible.setRole(roleDe(profil));
     }
 
     /**
@@ -303,7 +314,7 @@ public class UtilisateurService {
 
     private UtilisateurDTO toDTO(Utilisateur u) {
         return new UtilisateurDTO(u.getId(), u.getEmail(), u.getStatut().name(), u.getDateCreation(), u.getDateDerniereConnexion(),
-                u.nomComplet(), u.getMatriculeAgent(), nomsRoles(u), perimetreDe(u), u.isAgirSurSonDossier());
+                u.nomComplet(), u.getMatriculeAgent(), nomRole(u), perimetreDe(u), u.isAgirSurSonDossier());   // [MODIFIÉ] nomRole(u)
     }
 
     private UtilisateurDetailDTO toDetail(Utilisateur u) {
@@ -311,13 +322,11 @@ public class UtilisateurService {
                 : agentRepository.findById(u.getMatriculeAgent()).map(AgentLieDTO::de)
                         .orElseGet(() -> AgentLieDTO.absent(u.getMatriculeAgent()));
         return new UtilisateurDetailDTO(u.getId(), u.getEmail(), u.getStatut().name(), u.getDateCreation(), u.getDateDerniereConnexion(),
-                u.getNom(), u.getPrenom(), u.getMatriculeAgent(), nomsRoles(u), perimetreDe(u), agent,
+                u.getNom(), u.getPrenom(), u.getMatriculeAgent(), nomRole(u), perimetreDe(u), agent,   // [MODIFIÉ] nomRole(u)
                 u.isAgirSurSonDossier());
     }
 
-    private static List<String> nomsRoles(Utilisateur u) {
-        return u.getRoles().stream().map(Role::getNomRole).sorted().toList();
-    }
+    // [SUPPRIMÉ] private static List<String> nomsRoles(Utilisateur u)
 
     private static PerimetreDTO perimetreDe(Utilisateur u) {
         Map<DimensionPerimetre, List<String>> parDimension = new EnumMap<>(DimensionPerimetre.class);

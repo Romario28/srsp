@@ -54,8 +54,8 @@ public class Session {
     @Column(name = "date_expiration", nullable = false)
     private LocalDateTime dateExpiration;
 
-    @Column(name = "adresse_ip", length = 45)
-    private String adresseIp;
+//    @Column(name = "adresse_ip", length = 45)
+//    private String adresseIp;
 
     @Column(name = "actif", nullable = false)
     @Builder.Default

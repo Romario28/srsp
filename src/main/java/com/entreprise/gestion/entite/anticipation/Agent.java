@@ -39,13 +39,6 @@ public class Agent {
     @Column(name = "statut", length = 20)
     private StatutAgent statut;
 
- /*   @ManyToOne @JoinColumn(name = "corps_code")
-    private Corps corps;
-
-    @ManyToOne @JoinColumn(name = "grade_code")
-    private Grade grade;
-
-*/
      @ManyToOne(fetch = FetchType.LAZY)
      @JoinColumns({
              @JoinColumn(name = "corps_code", referencedColumnName = "code"),

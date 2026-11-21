@@ -26,8 +26,9 @@ class ControleAccesTest {
     private final ControleAcces acces = new ControleAcces(repo, proprietes);
 
     private static UserDetailsImpl acteur(long id, String role, String matricule) {
-        Utilisateur u = Utilisateur.builder().id(id).email("a" + id + "@x.mg").matriculeAgent(matricule).build();
-        u.getUtilisateurRoles().add(UtilisateurRole.builder().utilisateur(u).role(Role.builder().nomRole(role).build()).build());
+        // [MODIFIÉ] le rôle est posé directement sur le compte (était : u.getUtilisateurRoles().add(UtilisateurRole.builder()…))
+        Utilisateur u = Utilisateur.builder().id(id).email("a" + id + "@x.mg").matriculeAgent(matricule)
+                .role(Role.builder().nomRole(role).build()).build();
         return new UserDetailsImpl(u);
     }
     private static PerimetreUtilisateur p(DimensionPerimetre d, String code) {
@@ -92,8 +93,8 @@ class ControleAccesTest {
     }
 
     private static UserDetailsImpl agent(long id, String matricule, boolean droit) {
-        Utilisateur u = Utilisateur.builder().id(id).email("a" + id + "@x.mg").matriculeAgent(matricule).agirSurSonDossier(droit).build();
-        u.getUtilisateurRoles().add(UtilisateurRole.builder().utilisateur(u).role(Role.builder().nomRole("ROLE_AGENT").build()).build());
+        Utilisateur u = Utilisateur.builder().id(id).email("a" + id + "@x.mg").matriculeAgent(matricule).agirSurSonDossier(droit)
+                .role(Role.builder().nomRole("ROLE_AGENT").build()).build();   // [MODIFIÉ]
         return new UserDetailsImpl(u);
     }
 

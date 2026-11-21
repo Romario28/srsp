@@ -1,9 +1,9 @@
 package com.entreprise.gestion.dto;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
+// [MODIFIÉ] role (un seul) remplace roles (liste)
 public record UtilisateurDTO(Long id, String email, String statut, LocalDateTime dateCreation,
                              LocalDateTime dateDerniereConnexion, String nomComplet, String matriculeAgent,
-                             List<String> roles, PerimetreDTO perimetre,
+                             String role, PerimetreDTO perimetre,
                              boolean agirSurSonDossier) {}

@@ -68,7 +68,7 @@ public class AuthService {
         Session session = Session.builder()
                 .utilisateur(utilisateur)
                 .token(token)
-                .adresseIp(ip)
+//                .adresseIp(ip)
                 .dateExpiration(LocalDateTime.now().plusDays(1))
                 .actif(true)
                 .build();

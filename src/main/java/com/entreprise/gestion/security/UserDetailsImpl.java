@@ -10,7 +10,6 @@ import org.springframework.security.core.userdetails.UserDetails;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Implémentation personnalisée de UserDetails.
@@ -31,9 +30,10 @@ public class UserDetailsImpl implements UserDetails {
 
     public UserDetailsImpl(Utilisateur utilisateur) {
         this.utilisateur = utilisateur;
-        this.authorities = utilisateur.getRoles().stream()
-                .map(role -> new SimpleGrantedAuthority(role.getNomRole()))
-                .collect(Collectors.toList());
+        // [MODIFIÉ] une seule autorité : le rôle du compte (liste vide si le compte n'a pas de rôle, cas des tests)
+        this.authorities = utilisateur.getRole() == null
+                ? List.<GrantedAuthority>of()
+                : List.<GrantedAuthority>of(new SimpleGrantedAuthority(utilisateur.getRole().getNomRole()));
     }
 
     // ── Contrat UserDetails ──────────────────────────────────────────────────

@@ -37,7 +37,7 @@ class UtilisateurServiceTest {
     @Mock UtilisateurRepository utilisateurRepository;
     @Mock AgentRepository agentRepository;
     @Mock RoleRepository roleRepository;
-    @Mock UtilisateurRoleRepository utilisateurRoleRepository;
+    // [SUPPRIMÉ] @Mock UtilisateurRoleRepository utilisateurRoleRepository;
     @Mock PasswordEncoder passwordEncoder;
     @Mock AuditService auditService;
     @Mock ControleAcces controleAcces;
@@ -63,7 +63,6 @@ class UtilisateurServiceTest {
         when(passwordEncoder.encode(any())).thenReturn("hash");
         when(utilisateurRepository.save(any())).thenAnswer(i -> i.getArgument(0));
         when(roleRepository.findByNomRole("ROLE_AGENT")).thenReturn(Optional.of(Role.builder().nomRole("ROLE_AGENT").build()));
-        when(utilisateurRoleRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
         UtilisateurDetailDTO dto = service.create(demande(" 123456 "), actor);
 
@@ -71,14 +70,13 @@ class UtilisateurServiceTest {
         assertThat(dto.nom()).isEqualTo("Rakoto");
         assertThat(dto.prenom()).isEqualTo("Jean");
         assertThat(dto.agentLie().trouve()).isTrue();
-        assertThat(dto.roles()).containsExactly("ROLE_AGENT");
+        assertThat(dto.role()).isEqualTo("ROLE_AGENT");   // [MODIFIÉ] était : dto.roles()).containsExactly(…)
     }
 
     @Test void unLienVersUnAgentAbsentEstAccepte() {
         when(passwordEncoder.encode(any())).thenReturn("hash");
         when(utilisateurRepository.save(any())).thenAnswer(i -> i.getArgument(0));
         when(roleRepository.findByNomRole("ROLE_AGENT")).thenReturn(Optional.of(Role.builder().nomRole("ROLE_AGENT").build()));
-        when(utilisateurRoleRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
         UtilisateurDetailDTO dto = service.create(demande("777777"), actor);
 
@@ -87,12 +85,12 @@ class UtilisateurServiceTest {
     }
 
     @Test void onNeRetirePasLeRoleDuDernierAdmin() {
-        Utilisateur cible = Utilisateur.builder().id(5L).email("b@x.mg").build();
-        cible.getUtilisateurRoles().add(UtilisateurRole.builder().utilisateur(cible).role(Role.builder().nomRole("ROLE_ADMIN").build()).build());
+        // [MODIFIÉ] le rôle est posé directement sur le compte
+        Utilisateur cible = Utilisateur.builder().id(5L).email("b@x.mg").role(Role.builder().nomRole("ROLE_ADMIN").build()).build();
         when(utilisateurRepository.findByIdVisibleParApi(5L)).thenReturn(Optional.of(cible));
         when(utilisateurRepository.countByRoleAdminActifExcludingSysteme()).thenReturn(1L);
 
-        assertThatThrownBy(() -> service.update(5L, new UpdateUtilisateurRequest(null, null, null, List.of("ROLE_RH"), null, false), actor))
+        assertThatThrownBy(() -> service.update(5L, new UpdateUtilisateurRequest(null, null, null, "ROLE_RH", null, false), actor))
                 .isInstanceOfSatisfying(BusinessException.class, e -> assertThat(e.getCode()).isEqualTo("DERNIER_ADMIN"));
     }
 
@@ -100,15 +98,33 @@ class UtilisateurServiceTest {
         when(passwordEncoder.encode(any())).thenReturn("hash");
         when(utilisateurRepository.save(any())).thenAnswer(i -> i.getArgument(0));
         when(roleRepository.findByNomRole(role)).thenReturn(Optional.of(Role.builder().nomRole(role).build()));
-        when(utilisateurRoleRepository.save(any())).thenAnswer(i -> i.getArgument(0));
     }
 
-    @Test void unCompteADesProfilsUniqueEtConnu() {
-        CreateUtilisateurRequest deux = demande("123456"); deux.setRoles(List.of("ROLE_RH", "ROLE_ADMIN"));
-        CreateUtilisateurRequest ancien = demande("123456"); ancien.setRoles(List.of("ROLE_EMPLOYE"));
-        for (CreateUtilisateurRequest r : List.of(deux, ancien))
-            assertThatThrownBy(() -> service.create(r, actor))
-                    .isInstanceOfSatisfying(BusinessException.class, e -> assertThat(e.getCode()).isEqualTo("PROFIL_INVALIDE"));
+    // [MODIFIÉ] remplace unCompteADesProfilsUniqueEtConnu : un seul rôle par construction, il reste à refuser un rôle inconnu
+    @Test void unCompteADUnProfilConnu() {
+        CreateUtilisateurRequest ancien = demande("123456"); ancien.setRole("ROLE_EMPLOYE");
+        assertThatThrownBy(() -> service.create(ancien, actor))
+                .isInstanceOfSatisfying(BusinessException.class, e -> assertThat(e.getCode()).isEqualTo("PROFIL_INVALIDE"));
+    }
+
+    // [NOUVEAU]
+    @Test void leRoleDemandeEstAffecteAuCompte() {
+        preparerCreation("ROLE_RH");
+        CreateUtilisateurRequest rh = demande(null); rh.setRole("ROLE_RH");
+        assertThat(service.create(rh, actor).role()).isEqualTo("ROLE_RH");
+    }
+
+    // [NOUVEAU]
+    @Test void changerDeProfilRemplaceLeRoleUnique() {
+        Utilisateur cible = compte(5L, "b@x.mg", "ROLE_RH", null, null);
+        Role chef = Role.builder().nomRole("ROLE_CHEF").build();
+        when(utilisateurRepository.findByIdVisibleParApi(5L)).thenReturn(Optional.of(cible));
+        when(roleRepository.findByNomRole("ROLE_CHEF")).thenReturn(Optional.of(chef));
+
+        UtilisateurDetailDTO dto = service.update(5L, new UpdateUtilisateurRequest(null, null, null, "ROLE_CHEF", null, false), actor);
+
+        assertThat(cible.getRole()).isSameAs(chef);
+        assertThat(dto.role()).isEqualTo("ROLE_CHEF");
     }
 
     @Test void unCompteAgentExigeUnMatricule() {
@@ -124,13 +140,14 @@ class UtilisateurServiceTest {
 
     @Test void leDroitDAgirEstIgnorePourUnProfilRh() {
         preparerCreation("ROLE_RH");
-        CreateUtilisateurRequest rh = demande(null); rh.setRoles(List.of("ROLE_RH")); rh.setAgirSurSonDossier(true);
+        CreateUtilisateurRequest rh = demande(null); rh.setRole("ROLE_RH"); rh.setAgirSurSonDossier(true);   // [MODIFIÉ] setRole
         assertThat(service.create(rh, actor).agirSurSonDossier()).isFalse();
     }
 
     private static Utilisateur compte(long id, String email, String role, String matricule, String ministere) {
-        Utilisateur u = Utilisateur.builder().id(id).email(email).matriculeAgent(matricule).build();
-        u.getUtilisateurRoles().add(UtilisateurRole.builder().utilisateur(u).role(Role.builder().nomRole(role).build()).build());
+        // [MODIFIÉ] le rôle est posé directement sur le compte
+        Utilisateur u = Utilisateur.builder().id(id).email(email).matriculeAgent(matricule)
+                .role(Role.builder().nomRole(role).build()).build();
         if (ministere != null) u.getPerimetres().add(PerimetreUtilisateur.builder().utilisateur(u)
                 .dimension(DimensionPerimetre.MINISTERE).code(ministere).build());
         return u;

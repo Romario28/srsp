@@ -20,6 +20,9 @@ import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import com.entreprise.gestion.entite.Session;          // AJOUTÉ
+import org.mockito.ArgumentCaptor;                     // AJOUTÉ
+import static org.mockito.Mockito.verify;              // AJOUTÉ
 
 import java.util.Optional;
 
@@ -93,5 +96,38 @@ class AuthServiceTest {
 
         assertThatThrownBy(() -> authService.login(req, "127.0.0.1"))
                 .isInstanceOf(DisabledException.class);
+    }
+
+    // AJOUTÉ : l'ouverture de session enregistre bien une session active, sans IP
+    @Test
+    void loginEnregistreUneSessionActiveAvecSonJeton() {
+        LoginRequest req = new LoginRequest("user@x.mg", "motdepasse");
+        Utilisateur u = Utilisateur.builder().id(1L).email("user@x.mg").statut(StatutUtilisateur.ACTIF).build();
+        UserDetailsImpl principal = new UserDetailsImpl(u);
+        Authentication auth = mock(Authentication.class);
+        when(auth.getPrincipal()).thenReturn(principal);
+        when(authManager.authenticate(any(UsernamePasswordAuthenticationToken.class))).thenReturn(auth);
+        when(jwtService.generateToken(principal)).thenReturn("token123");
+
+        authService.login(req, "127.0.0.1");
+
+        ArgumentCaptor<Session> capture = ArgumentCaptor.forClass(Session.class);
+        verify(sessionRepository).save(capture.capture());
+        assertThat(capture.getValue().getToken()).isEqualTo("token123");
+        assertThat(capture.getValue().isActif()).isTrue();
+        assertThat(capture.getValue().getDateExpiration()).isNotNull();
+        assertThat(capture.getValue().getUtilisateur()).isSameAs(u);
+    }
+
+    // AJOUTÉ : la fermeture de session désactive toujours la session
+    @Test
+    void logoutDesactiveLaSession() {
+        Session session = Session.builder().token("token123").actif(true).build();
+        when(sessionRepository.findByToken("token123")).thenReturn(Optional.of(session));
+
+        authService.logout("token123", "user@x.mg");
+
+        assertThat(session.isActif()).isFalse();
+        verify(sessionRepository).save(session);
     }
 }

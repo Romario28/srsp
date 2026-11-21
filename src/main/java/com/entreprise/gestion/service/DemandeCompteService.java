@@ -12,13 +12,11 @@ import com.entreprise.gestion.entite.PerimetreUtilisateur;
 import com.entreprise.gestion.entite.Role;
 import com.entreprise.gestion.entite.StatutUtilisateur;
 import com.entreprise.gestion.entite.Utilisateur;
-import com.entreprise.gestion.entite.UtilisateurRole;
 import com.entreprise.gestion.entite.anticipation.Agent;
 import com.entreprise.gestion.exception.BusinessException;
 import com.entreprise.gestion.repository.DepartementRepository;     // [NOUVEAU]
 import com.entreprise.gestion.repository.RoleRepository;
 import com.entreprise.gestion.repository.UtilisateurRepository;
-import com.entreprise.gestion.repository.UtilisateurRoleRepository;
 import com.entreprise.gestion.repository.referentiel.AgentRepository;
 import com.entreprise.gestion.security.UserDetailsImpl;
 import com.entreprise.gestion.service.acces.ControleAcces;
@@ -55,7 +53,6 @@ public class DemandeCompteService {
     private final UtilisateurRepository     utilisateurRepository;
     private final AgentRepository           agentRepository;
     private final RoleRepository            roleRepository;
-    private final UtilisateurRoleRepository utilisateurRoleRepository;
     private final PasswordEncoder           passwordEncoder;
     private final AuditService              auditService;
     private final ControleAcces             controleAcces;
@@ -100,6 +97,10 @@ public class DemandeCompteService {
                 .orElseThrow(() -> new BusinessException("DEPARTEMENT_INCONNU",
                         "Le département choisi n'existe plus : actualisez la page et choisissez-en un autre."));
 
+        // [NOUVEAU] le rôle est obligatoire : on le cherche avant de créer le compte
+        Role role = roleRepository.findByNomRole(profil)
+                .orElseThrow(() -> new BusinessException("ROLE_INCONNU", "Rôle inconnu : " + profil));
+
         Utilisateur u = Utilisateur.builder()
                 .email(email.toLowerCase())
                 .motDePasseHash(passwordEncoder.encode(req.password()))
@@ -107,18 +108,12 @@ public class DemandeCompteService {
                 .prenom(nettoyer(req.prenom()))
                 .matriculeAgent(matricule)
                 .departement(departement)   // [NOUVEAU]
+                .role(role)                 // [NOUVEAU]
                 .statut(StatutUtilisateur.EN_ATTENTE)
                 .compteSysteme(false)
                 .agirSurSonDossier(false)
                 .build();
         Utilisateur saved = utilisateurRepository.save(u);
-
-        Role role = roleRepository.findByNomRole(profil)
-                .orElseThrow(() -> new BusinessException("ROLE_INCONNU", "Rôle inconnu : " + profil));
-        // [MODIFIÉ] on garde l'instance RETOURNÉE par save() (celle que gère la session), pas l'objet d'origine
-        UtilisateurRole ur = utilisateurRoleRepository.save(
-                UtilisateurRole.builder().utilisateur(saved).role(role).build());
-        saved.getUtilisateurRoles().add(ur);
 
         auditService.logAnonyme("Système", "DEMANDE_COMPTE",
                 "Demande de compte pour " + saved.getEmail() + " (profil " + profil + ", matricule " + matricule
@@ -256,7 +251,7 @@ public class DemandeCompteService {
     }
 
     private static String profilDe(Utilisateur u) {
-        return u.getRoles().stream().map(Role::getNomRole).findFirst().orElse("");
+        return u.getRole() == null ? "" : u.getRole().getNomRole();
     }
 
     private static PerimetreDTO perimetreSuggere(Agent agent) {
