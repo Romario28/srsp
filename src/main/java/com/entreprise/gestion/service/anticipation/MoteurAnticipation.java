@@ -138,7 +138,7 @@ public class MoteurAnticipation {
         return new Echeance(a.getMatricule(), nomComplet(a), TypeAnticipation.ANOMALIE, null, message, type);
     }
 
-    private String nomComplet(Agent a) { return a.getPrenoms() + " " + a.getNom(); }
+    private String nomComplet(Agent a) { return a.nomComplet(); }
 
     private void ajouter(List<Echeance> liste, Echeance e) { if (e != null) liste.add(e); }
 }

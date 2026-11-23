@@ -37,7 +37,7 @@ public record EcheanceAnticipeeDTO(
 
         return new EcheanceAnticipeeDTO(
                 a.getMatricule(),
-                a.getPrenoms() + " " + a.getNom(),
+                a.nomComplet(),
                 e.type(),
                 e.dateEcheance(),
                 fenetre != null ? fenetre.datePreparation(e.dateEcheance()) : null,

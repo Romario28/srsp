@@ -26,7 +26,7 @@ public record DossierDTO(
     public static DossierDTO de(Dossier d, LocalDate aujourd, long nbDossiersAgent) {
         Agent a = d.getAgent();
         boolean retard = RegleDossier.enRetard(d, aujourd);
-        return new DossierDTO(d.getId(), a.getMatricule(), a.getPrenoms() + " " + a.getNom(), a.getStatut(),
+        return new DossierDTO(d.getId(), a.getMatricule(), a.nomComplet(), a.getStatut(),
                 a.getCorps() == null ? null : a.getCorps().getCode(),
                 a.getCorps() == null ? null : a.getCorps().getCategorie(),
                 a.getGrade() == null ? null : a.getGrade().getCode(),

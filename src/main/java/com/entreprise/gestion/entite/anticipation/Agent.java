@@ -86,4 +86,13 @@ public class Agent {
 
     @ManyToOne @JoinColumn(name = "min_code")
     private Ministere ministere;
+
+    /** « Prénoms Nom » ; si l'un manque, l'autre seul ; si les deux manquent, le matricule. Jamais « null ». */
+    public String nomComplet() {
+        String p = prenoms == null ? "" : prenoms.trim();
+        String n = nom == null ? "" : nom.trim();
+        String complet = (p + " " + n).trim();
+        if (!complet.isEmpty()) return complet;
+        return matricule == null ? "" : matricule;
+    }
 }
