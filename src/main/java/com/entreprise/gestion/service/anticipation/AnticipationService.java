@@ -126,6 +126,20 @@ public class AnticipationService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * [NOUVEAU] Nombre d'anomalies visibles par le compte courant (badge du menu).
+     * Même périmètre que l'écran Anomalies, sans construire les lignes ni consulter les dossiers.
+     */
+    @Transactional(readOnly = true)
+    public long compterAnomalies() {
+        Perimetre perimetre = perimetreCourant.get();
+        return agentRepository.findAllActifs().stream()
+                .filter(perimetre::autorise)
+                .flatMap(a -> moteur.calculerEcheances(a).stream())
+                .filter(e -> e.type() == TypeAnticipation.ANOMALIE)
+                .count();
+    }
+
     private static List<EcheanceAnticipeeDTO> lignes(List<AgentEcheance> echeances) {
         return echeances.stream().map(AgentEcheance::ligne).collect(Collectors.toList());
     }

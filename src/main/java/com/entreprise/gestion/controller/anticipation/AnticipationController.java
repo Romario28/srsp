@@ -141,4 +141,10 @@ public class AnticipationController {
     public ResponseEntity<List<EcheanceAnticipeeDTO>> anomalies(@ModelAttribute FiltreAgents filtre) {
         return ResponseEntity.ok(anticipationService.anomalies(filtre));
     }
+
+    // [NOUVEAU] badge du menu : nombre d'anomalies du périmètre du compte
+    @GetMapping("/anomalies/compteur")
+    public ResponseEntity<Long> compteurAnomalies() {
+        return ResponseEntity.ok(anticipationService.compterAnomalies());
+    }
 }
