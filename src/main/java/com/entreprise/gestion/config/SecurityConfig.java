@@ -2,6 +2,7 @@ package com.entreprise.gestion.config;
 
 import com.entreprise.gestion.security.JwtAuthFilter;
 import com.entreprise.gestion.security.UserDetailsServiceImpl;
+import jakarta.servlet.DispatcherType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -40,6 +41,11 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        // le flux SSE est autorisé à son ouverture (REQUEST). Quand il se termine, le conteneur
+                        // relance une passe ASYNC où le jeton n'est plus présent : sans cette ligne, elle serait refusée
+                        // (erreurs « response is already committed » dans les journaux). Un client ne peut pas provoquer
+                        // lui-même un ASYNC : seule une requête déjà autorisée en produit.
+                        .dispatcherTypeMatchers(DispatcherType.ASYNC).permitAll()
                         .requestMatchers("/api/auth/login").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/demande-compte").permitAll()   // [NOUVEAU]
                         .requestMatchers(HttpMethod.GET, "/api/auth/departements").permitAll()   // [NOUVEAU]

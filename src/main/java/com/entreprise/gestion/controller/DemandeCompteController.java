@@ -5,11 +5,14 @@ import com.entreprise.gestion.dto.DemandeCompteDTO;
 import com.entreprise.gestion.dto.RefusRequest;
 import com.entreprise.gestion.security.UserDetailsImpl;
 import com.entreprise.gestion.service.DemandeCompteService;
+import com.entreprise.gestion.service.DemandesComptesDiffusion;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.List;
 
@@ -19,6 +22,7 @@ import java.util.List;
 public class DemandeCompteController {
 
     private final DemandeCompteService demandeCompteService;
+    private final DemandesComptesDiffusion diffusion;
 
     @GetMapping
     public ResponseEntity<List<DemandeCompteDTO>> lister(@AuthenticationPrincipal UserDetailsImpl principal) {
@@ -28,6 +32,14 @@ public class DemandeCompteController {
     @GetMapping("/compteur")
     public ResponseEntity<Long> compteur(@AuthenticationPrincipal UserDetailsImpl principal) {
         return ResponseEntity.ok(demandeCompteService.compter(principal));
+    }
+
+    /** Flux d'événements : ADMIN et CHEF seulement (SecurityConfig : /api/demandes-comptes/**). */
+    @GetMapping(value = "/flux", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public ResponseEntity<SseEmitter> flux(@AuthenticationPrincipal UserDetailsImpl principal) {
+        return ResponseEntity.ok()
+                .header("X-Accel-Buffering", "no")   // nginx : ne pas retenir les événements en tampon
+                .body(diffusion.abonner(principal.getId()));
     }
 
     @PostMapping("/{id}/approbation")

@@ -23,6 +23,7 @@ import com.entreprise.gestion.service.acces.ControleAcces;
 import com.entreprise.gestion.service.acces.Perimetre;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -57,6 +58,7 @@ public class DemandeCompteService {
     private final AuditService              auditService;
     private final ControleAcces             controleAcces;
     private final DepartementRepository     departementRepository;   // [NOUVEAU]
+    private final ApplicationEventPublisher evenements;
 
     @Value("${comptes.demandes-max-en-attente:200}")
     private int maxDemandesEnAttente;
@@ -118,6 +120,7 @@ public class DemandeCompteService {
         auditService.logAnonyme("Système", "DEMANDE_COMPTE",
                 "Demande de compte pour " + saved.getEmail() + " (profil " + profil + ", matricule " + matricule
                         + ", département " + departement.getLibelle() + ")", ip);   // [MODIFIÉ]
+        evenements.publishEvent(new DemandesComptesModifiees());   // les validateurs connectés relisent leur compteur après la validation de la transaction
     }
 
     @Transactional(readOnly = true)
@@ -201,6 +204,7 @@ public class DemandeCompteService {
         auditService.logAvecEntite(acteur.getUtilisateur(), "APPROBATION_COMPTE",
                 "Demande de compte approuvée pour " + cible.getEmail() + " (profil " + profil + ", matricule "
                         + cible.getMatriculeAgent() + ") par " + acteur.getNomComplet(), null);
+        evenements.publishEvent(new DemandesComptesModifiees());   // les validateurs connectés relisent leur compteur après la validation de la transaction
     }
 
     @Transactional
@@ -229,6 +233,7 @@ public class DemandeCompteService {
         auditService.logAvecEntite(acteur.getUtilisateur(), "REFUS_COMPTE",
                 "Demande de compte refusée pour " + email + " (matricule " + matricule + ") par " + acteur.getNomComplet()
                         + (motif.isEmpty() ? "" : " — Motif : " + motif), null);
+        evenements.publishEvent(new DemandesComptesModifiees());   // les validateurs connectés relisent leur compteur après la validation de la transaction
     }
 
     private boolean visiblePourChef(Utilisateur u, Perimetre chef, java.util.function.Function<String, Agent> agentDe) {

@@ -26,6 +26,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -48,6 +49,7 @@ class DemandeCompteServiceTest {
     @Mock AuditService auditService;
     @Mock ControleAcces controleAcces;
     @Mock DepartementRepository departementRepository;   // [NOUVEAU]
+    @Mock ApplicationEventPublisher evenements;
     @InjectMocks DemandeCompteService service;
 
     private UserDetailsImpl admin;
@@ -99,6 +101,7 @@ class DemandeCompteServiceTest {
         assertThat(capture.getValue().getStatut()).isEqualTo(StatutUtilisateur.EN_ATTENTE);
         assertThat(capture.getValue().getRole()).isSameAs(role);
         assertThat(capture.getValue().getDepartement()).isSameAs(departement);
+        verify(evenements).publishEvent(any(DemandesComptesModifiees.class));   // les validateurs sont prévenus
     }
 
     // [NOUVEAU]
@@ -118,6 +121,7 @@ class DemandeCompteServiceTest {
         assertThatThrownBy(() -> service.soumettre(demande("123456", "nouveau@x.mg", "ROLE_AGENT"), "127.0.0.1"))
                 .isInstanceOfSatisfying(BusinessException.class, e -> assertThat(e.getCode()).isEqualTo("DEPARTEMENT_INCONNU"));
         verify(utilisateurRepository, never()).save(any());
+        verify(evenements, never()).publishEvent(any(Object.class));   // rien n'est diffusé quand la demande échoue
     }
 
     @Test
@@ -151,6 +155,7 @@ class DemandeCompteServiceTest {
         assertThat(u.getStatut()).isEqualTo(StatutUtilisateur.ACTIF);
         verify(utilisateurRepository).save(u);
         verify(auditService).logAvecEntite(eq(admin.getUtilisateur()), eq("APPROBATION_COMPTE"), any(), isNull());
+        verify(evenements).publishEvent(any(DemandesComptesModifiees.class));   // les validateurs sont prévenus
     }
 
     @Test
@@ -162,5 +167,6 @@ class DemandeCompteServiceTest {
 
         verify(utilisateurRepository).delete(u);
         verify(auditService).logAvecEntite(eq(admin.getUtilisateur()), eq("REFUS_COMPTE"), contains("Matricule non conforme"), isNull());
+        verify(evenements).publishEvent(any(DemandesComptesModifiees.class));   // les validateurs sont prévenus
     }
 }
