@@ -34,7 +34,8 @@ spring:
   task:
     scheduling:
       pool:
-        size: 2            # par défaut 1 : un passage long de BatchAnticipation retarderait le battement du flux
+        size: 2
+        # par défaut 1 : un passage long de BatchAnticipation retarderait le battement du flux
 
 comptes:
   demandes-max-en-attente: 200   # [NOUVEAU] plafond de demandes en attente (protège l'inscription publique)
