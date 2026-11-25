@@ -1,32 +1,24 @@
-#spring:
-#  datasource:
-#    url: jdbc:h2:mem:rbacdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;INIT=CREATE SCHEMA IF NOT EXISTS gestion_utilisateurs
 spring:
-  profiles:
-    default: local
   mvc:
     format:
       date: iso
+  # PostgreSQL (était : H2 en mémoire). À adapter : nom de la base, utilisateur, mot de passe.
   datasource:
-    url: jdbc:h2:mem:rbacdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;INIT=CREATE SCHEMA IF NOT EXISTS anticipation\;CREATE SCHEMA IF NOT EXISTS referentiel_rh\;CREATE SCHEMA IF NOT EXISTS gestion_utilisateurs
-  driver-class-name: org.h2.Driver
-  username: sa
-  password: ""
-  h2:
-    console:
-      enabled: true
-      path: /h2-console
-      settings:
-        web-allow-others: true
-
+    url: jdbc:postgresql://localhost:5432/sigpap
+    username: postgres
+    password: romario316
+    driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
-      ddl-auto: create-drop
+      # « update » crée les tables et ajoute les colonnes manquantes, sans rien supprimer.
+      ddl-auto: update
     show-sql: false
     properties:
       hibernate:
         format_sql: true
-        dialect: org.hibernate.dialect.H2Dialect
+        # crée aussi les trois schémas (anticipation, referentiel_rh, gestion_utilisateurs) s'ils n'existent pas.
+        hbm2ddl:
+          create_namespaces: true
   servlet:
     multipart:
       max-file-size: 100MB
@@ -34,11 +26,10 @@ spring:
   task:
     scheduling:
       pool:
-        size: 2
-        # par défaut 1 : un passage long de BatchAnticipation retarderait le battement du flux
+        size: 2            # par défaut 1 : un passage long de BatchAnticipation retarderait le battement du flux
 
 comptes:
-  demandes-max-en-attente: 200   # [NOUVEAU] plafond de demandes en attente (protège l'inscription publique)
+  demandes-max-en-attente: 200   # plafond de demandes en attente (protège l'inscription publique)
 
 anticipation:
   # MC1E est un ancien nom de ST0E pour le grade suivant uniquement. Le type d'échéance
@@ -61,18 +52,18 @@ anticipation:
 
 dossiers:
   date-reprise: "2026-01-01"
-  # roles-exemptes-conflit: ROLE_ADMIN   # [NOUVEAU] décommentez pour dispenser un rôle de la règle du dossier propre
+  # roles-exemptes-conflit: ROLE_ADMIN   # décommentez pour dispenser un rôle de la règle du dossier propre
 
 server:
   port: 8080
   address: 0.0.0.0
-  error:                   # <--- IL MANQUAIT CETTE LIGNE
+  error:
     include-message: always
     include-binding-errors: always
 
 app:
   jwt:
-    # Clé Base64 de 256 bits minimum pour HS256
+    # Clé Base64 de 256 bits minimum pour HS256. À remplacer avant tout déploiement réel.
     secret: "4D6251655468576D5A7134743777217A25432A462D4A614E645267556B586E32"
     expiration: 86400000   # 24 h en millisecondes
 

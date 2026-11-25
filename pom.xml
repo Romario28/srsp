@@ -50,11 +50,11 @@
       <scope>runtime</scope>
     </dependency>
 
-    <!-- H2 base en mémoire -->
+    <!-- H2 : uniquement pour les tests (était : scope runtime, base de l'application) -->
     <dependency>
       <groupId>com.h2database</groupId>
       <artifactId>h2</artifactId>
-      <scope>runtime</scope>
+      <scope>test</scope>
     </dependency>
 
     <dependency>
