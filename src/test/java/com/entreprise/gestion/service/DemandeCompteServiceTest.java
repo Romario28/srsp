@@ -124,6 +124,32 @@ class DemandeCompteServiceTest {
         verify(evenements, never()).publishEvent(any(Object.class));   // rien n'est diffusé quand la demande échoue
     }
 
+    // [NOUVEAU] le nom seul suffit ; le prénom absent est enregistré null
+    @Test
+    void soumissionAccepteeAvecLeNomSeulement() {
+        Role role = Role.builder().nomRole("ROLE_AGENT").build();
+        when(departementRepository.findById(1L)).thenReturn(Optional.of(Departement.builder().id(1L).libelle("D").build()));
+        when(passwordEncoder.encode(any())).thenReturn("hash");
+        when(roleRepository.findByNomRole("ROLE_AGENT")).thenReturn(Optional.of(role));
+        when(utilisateurRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+        service.soumettre(new DemandeCompteRequest("123456", "Rakoto", "  ", "seul@x.mg", "password123", "ROLE_AGENT", 1L), "127.0.0.1");
+
+        ArgumentCaptor<Utilisateur> capture = ArgumentCaptor.forClass(Utilisateur.class);
+        verify(utilisateurRepository).save(capture.capture());
+        assertThat(capture.getValue().getNom()).isEqualTo("Rakoto");
+        assertThat(capture.getValue().getPrenom()).isNull();   // blanc = absent
+    }
+
+    // [NOUVEAU] ni nom ni prénom : refusé
+    @Test
+    void soumissionRefuseeSansNiNomNiPrenom() {
+        assertThatThrownBy(() -> service.soumettre(
+                new DemandeCompteRequest("123456", " ", null, "vide@x.mg", "password123", "ROLE_AGENT", 1L), "127.0.0.1"))
+                .isInstanceOfSatisfying(BusinessException.class, e -> assertThat(e.getCode()).isEqualTo("IDENTITE_REQUISE"));
+        verify(utilisateurRepository, never()).save(any());
+    }
+
     @Test
     void chefNeVoitQueLesDemandesDansSonPerimetre() {
         Utilisateur uChef = Utilisateur.builder().id(2L).email("chef@x.mg").role(Role.builder().nomRole("ROLE_CHEF").build()).build();

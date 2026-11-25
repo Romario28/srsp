@@ -84,6 +84,13 @@ public class DemandeCompteService {
             throw new BusinessException("EMAIL_REQUIS", "L'e-mail est obligatoire.");
         }
 
+        // [NOUVEAU] au moins le nom ou le prénom ; une valeur vide ou blanche compte comme absente
+        String nom = nettoyer(req.nom());
+        String prenom = nettoyer(req.prenom());
+        if (nom == null && prenom == null) {
+            throw new BusinessException("IDENTITE_REQUISE", "Renseignez au moins le nom ou le prénom.");
+        }
+
         // Unicité : on n'indique pas si c'est l'e-mail ou le matricule, mais on dit quoi faire
         if (utilisateurRepository.existsByEmailIgnoreCase(email) || utilisateurRepository.findByMatriculeAgent(matricule).isPresent()) {
             throw new BusinessException("DEMANDE_IMPOSSIBLE",
@@ -106,8 +113,10 @@ public class DemandeCompteService {
         Utilisateur u = Utilisateur.builder()
                 .email(email.toLowerCase())
                 .motDePasseHash(passwordEncoder.encode(req.password()))
-                .nom(nettoyer(req.nom()))
-                .prenom(nettoyer(req.prenom()))
+                // SUPPRIMÉ : .nom(nettoyer(req.nom()))
+                // SUPPRIMÉ : .prenom(nettoyer(req.prenom()))
+                .nom(nom)         // [MODIFIÉ] null si absent
+                .prenom(prenom)   // [MODIFIÉ] null si absent
                 .matriculeAgent(matricule)
                 .departement(departement)   // [NOUVEAU]
                 .role(role)                 // [NOUVEAU]

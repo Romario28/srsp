@@ -1,4 +1,3 @@
-// Agent.java
 package com.entreprise.gestion.entite.anticipation;
 
 import jakarta.persistence.*;
