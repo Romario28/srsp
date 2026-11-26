@@ -16,10 +16,11 @@
   <artifactId>gestion</artifactId>
   <version>1.0.0</version>
   <name>gestion-employes-rbac</name>
-  <description>Gestion RH avec RBAC complet — Spring Boot 3 + JWT + H2</description>
+  <description>Gestion RH avec RBAC complet — Spring Boot 4 + JWT + PostgreSQL</description>
 
   <properties>
     <java.version>21</java.version>
+    <commons-codec.version>1.23.0</commons-codec.version>
   </properties>
 
   <dependencies>
