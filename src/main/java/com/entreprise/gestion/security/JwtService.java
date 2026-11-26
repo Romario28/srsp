@@ -8,7 +8,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
-import java.security.Key;
+import javax.crypto.SecretKey;                       // [CORRECTION] remplace java.security.Key
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -26,19 +26,19 @@ public class JwtService {
 
     public String generateToken(UserDetails userDetails) {
         Map<String, Object> claims = new HashMap<>();
-        // Intégrer les rôles dans le payload du token
         claims.put("roles", userDetails.getAuthorities().stream()
-            .map(GrantedAuthority::getAuthority)
-            .collect(Collectors.toList()));
+                .map(GrantedAuthority::getAuthority)
+                .collect(Collectors.toList()));
 
         return Jwts.builder()
-            .setClaims(claims)
-            .setSubject(userDetails.getUsername())
-            .setIssuedAt(new Date())
-            .setExpiration(new Date(System.currentTimeMillis() + jwtExpiration))
-            .signWith(getSignKey(), SignatureAlgorithm.HS256)
-            .compact();
+                .claims(claims)                                   // [CORRECTION] était setClaims
+                .subject(userDetails.getUsername())               // [CORRECTION] était setSubject
+                .issuedAt(new Date())                             // [CORRECTION] était setIssuedAt
+                .expiration(new Date(System.currentTimeMillis() + jwtExpiration)) // [CORRECTION] était setExpiration
+                .signWith(getSignKey())                           // [CORRECTION] SignatureAlgorithm.HS256 supprimé (déduit de la clé)
+                .compact();
     }
+
 
     // ── Validation ────────────────────────────────────────────────────────────
 
@@ -60,15 +60,15 @@ public class JwtService {
     }
 
     private <T> T extractClaim(String token, Function<Claims, T> resolver) {
-        Claims claims = Jwts.parserBuilder()
-            .setSigningKey(getSignKey())
-            .build()
-            .parseClaimsJws(token)
-            .getBody();
+        Claims claims = Jwts.parser()                         // [CORRECTION] était parserBuilder()
+                .verifyWith(getSignKey())                         // [CORRECTION] était setSigningKey
+                .build()
+                .parseSignedClaims(token)                         // [CORRECTION] était parseClaimsJws
+                .getPayload();                                    // [CORRECTION] était getBody
         return resolver.apply(claims);
     }
 
-    private Key getSignKey() {
+    private SecretKey getSignKey() {                          // [CORRECTION] type Key -> SecretKey
         byte[] keyBytes = Decoders.BASE64.decode(jwtSecret);
         return Keys.hmacShaKeyFor(keyBytes);
     }
