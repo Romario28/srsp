@@ -36,7 +36,7 @@ public class BatchAnticipation {
     private final EntityManager entityManager;
     private final DossierGenerateur dossierGenerateur;
 
-    @Scheduled(cron = "${anticipation.batch.cron:0 */5 * * * *}")
+    @Scheduled(cron = "${anticipation.batch.cron:0 */10 * * * *}")
     @Transactional
     public void executer() {
         LocalDate aujourdhui = LocalDate.now();
