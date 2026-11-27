@@ -118,9 +118,11 @@ public interface DossierRepository extends JpaRepository<Dossier,Long> {
     @Query("SELECT new com.entreprise.gestion.service.dossier.CleDossier(d.agent.matricule,d.type,d.dateEcheance) FROM Dossier d")
     List<CleDossier> cles();
 
+
     String RESUME="SELECT new com.entreprise.gestion.service.dossier.DossierResume(d.agent.matricule,d.type,d.dateEcheance,d.statut,"
             +"d.dateDemarrage,d.motifSansSuite) FROM Dossier d";
     @Query(RESUME) List<DossierResume> resumes();
-    @Query(RESUME+" WHERE d.agent.matricule IN :matricules")
+    @Query("SELECT new com.entreprise.gestion.service.dossier.DossierResume(d.agent.matricule,d.type,d.dateEcheance,d.statut,"
+            +"d.dateDemarrage,d.motifSansSuite) FROM Dossier d WHERE d.agent.matricule IN :matricules")
     List<DossierResume> resumesDe(@Param("matricules") Collection<String> matricules);
 }
