@@ -35,7 +35,7 @@ anticipation:
   # MC1E est un ancien nom de ST0E pour le grade suivant uniquement. Le type d'échéance
   # suit le grade enregistré : MC1E reste en AVANCEMENT. Ne pas l'ajouter à grades-stagiaire.
   batch:
-    cron: "0 0 */2 * * *"
+    cron: "0 */5 * * * *"
   grades-stagiaire: ST0E
   # Renommages applicables dans tous les corps.
   correspondance-grades:

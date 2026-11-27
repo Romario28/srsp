@@ -12,7 +12,8 @@ import java.time.LocalDate;
                    @Index(name = "idx_dossier_matricule", columnList = "matricule")})
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class Dossier {
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY) @Column(name = "id")
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY) @Column(name = "id")
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
@@ -22,8 +23,10 @@ public class Dossier {
     @Enumerated(EnumType.STRING) @Column(name = "type_dossier", length = 30, nullable = false)
     private TypeAnticipation type;
 
-    @Column(name = "date_preparation", nullable = false) private LocalDate datePreparation;
-    @Column(name = "date_echeance", nullable = false)    private LocalDate dateEcheance;
+    @Column(name = "date_preparation", nullable = false)
+    private LocalDate datePreparation;
+    @Column(name = "date_echeance", nullable = false)
+    private LocalDate dateEcheance;
 
     /** Jour où un gestionnaire a démarré le dossier ; null tant qu'il n'a jamais été démarré. Conservée si le dossier passe sans suite. */
     @Column(name = "date_demarrage") private LocalDate dateDemarrage;
